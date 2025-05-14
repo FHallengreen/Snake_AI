@@ -1,21 +1,15 @@
 import numpy as np
 
+def relu(x):
+    """Rectified Linear Unit activation function"""
+    return np.maximum(0, x)
 
-def softmax(z):
-    return np.exp(z) / np.sum(np.exp(z))
+def leaky_relu(x, alpha=0.01):
+    """Leaky ReLU activation function to prevent dead neurons"""
+    return np.maximum(alpha * x, x)
 
-def sigmoid(z):
-    return 1 / (1 + np.exp(-z))
-
-
-def tanh(z):
-    return np.tanh(z)
-
-
-def relu(z):
-    return np.maximum(0, z)
-
-
-def leaky_relu(z):
-    epsilon = 0.001
-    return np.maximum(z * epsilon, z)
+def softmax(x):
+    """Softmax activation function"""
+    # Subtract max for numerical stability
+    exp_x = np.exp(x - np.max(x))
+    return exp_x / exp_x.sum()

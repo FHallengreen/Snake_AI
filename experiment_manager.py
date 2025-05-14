@@ -56,32 +56,48 @@ class ExperimentManager:
         print(f"Experiment setup created at {self.experiment_dir}")
         print(f"Configuration saved to {config_path}")
         
-    def prepare_ga_models(self, models_to_evaluate=3):
+    def prepare_ga_models(self, models_to_evaluate=3, advanced_training=False):
         """
         Prepare multiple GA models with different hyperparameters for evaluation.
         
         Args:
             models_to_evaluate: Number of different models to prepare
+            advanced_training: Whether to use advanced training (more generations, better params)
         """
         from ga_train import run_ga_experiment
         
-        # Hyperparameter configurations to test
-        configs = [
-            {'pop_size': 50, 'mut_rate': 0.01, 'generations': 50},
-            {'pop_size': 100, 'mut_rate': 0.05, 'generations': 50},
-            {'pop_size': 50, 'mut_rate': 0.1, 'generations': 50}
-        ][:models_to_evaluate]
+        # Check if user wants advanced training
+        if advanced_training:
+            print("\n=== Using Advanced Training Parameters ===")
+            print("This will take longer but produce better models")
+            
+            # Reduced generations from 350 to 200, as data shows major improvements happen by gen 200
+            configs = [
+                {'pop_size': 150, 'mut_rate': 0.03, 'generations': 200, 'games': 5},  # Best-performing config
+                {'pop_size': 160, 'mut_rate': 0.035, 'generations': 180, 'games': 5}, # Slightly higher mutation
+                {'pop_size': 170, 'mut_rate': 0.025, 'generations': 180, 'games': 5}  # Slightly lower mutation
+            ][:models_to_evaluate]
+        else:
+            print("\n=== Using Standard Training Parameters ===")
+            print("For better models, consider using advanced training")
+            
+            # Reduced generations for faster results
+            configs = [
+                {'pop_size': 100, 'mut_rate': 0.03, 'generations': 80, 'games': 3},
+                {'pop_size': 120, 'mut_rate': 0.035, 'generations': 80, 'games': 3},
+                {'pop_size': 130, 'mut_rate': 0.025, 'generations': 80, 'games': 3}
+            ][:models_to_evaluate]
         
         for i, config in enumerate(configs):
             print(f"\nTraining model {i+1}/{len(configs)}")
             print(f"Parameters: {config}")
             
-            # Train model
+            # Train model with all config parameters
             stats, best_model, best_fitness, best_score, best_steps, best_gen = run_ga_experiment(
                 pop_size=config['pop_size'], 
                 mut_rate=config['mut_rate'], 
                 generations=config['generations'],
-                games=3  # Games per evaluation during training
+                games=config['games']
             )
             
             # Save model
@@ -93,7 +109,7 @@ class ExperimentManager:
                 'score': best_score,
                 'steps': best_steps,
                 'generation': best_gen,
-                'games': 3
+                'games': config['games']
             }
             
             model_filename = f"model_{i+1}_pop{config['pop_size']}_mut{config['mut_rate']}.pkl"
@@ -181,8 +197,23 @@ class ExperimentManager:
         # Load the model
         with open(model_path, 'rb') as f:
             model_data = pickle.load(f)
+        
+        # Determine input dimension from model's DNA
+        if 'DNA' in model_data and model_data['DNA']:
+            input_dim = model_data['DNA'][0].shape[0]
+        else:
+            input_dim = 21  # Default
             
-        model = SimpleModel(dims=(15, 50, 50, 4))
+        print(f"Model input dimension: {input_dim}")
+            
+        # Create model with the correct dimensions
+        if input_dim == 15:
+            model = SimpleModel(dims=(15, 50, 50, 4))
+        elif input_dim == 18:
+            model = SimpleModel(dims=(18, 50, 50, 4))
+        else:
+            model = SimpleModel(dims=(21, 50, 50, 4))
+            
         model.DNA = model_data['DNA']
         
         # Run games
@@ -367,9 +398,14 @@ def main():
         elif choice == '2':
             try:
                 models = int(input("Number of models to train (default: 3): ") or "3")
-                manager.prepare_ga_models(models_to_evaluate=models)
+                
+                # Ask about advanced training
+                advanced = input("Use advanced training? This takes longer but produces better models. (y/n): ").lower()
+                advanced_training = advanced.startswith('y')
+                
+                manager.prepare_ga_models(models_to_evaluate=models, advanced_training=advanced_training)
             except ValueError:
-                print("Invalid input. Using default value of 3.")
+                print("Invalid input. Using default values.")
                 manager.prepare_ga_models()
                 
         elif choice == '3':

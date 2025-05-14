@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 import pickle
 import numpy as np
 from snake import SnakeGame
@@ -13,7 +12,12 @@ def run_best_model(model_file='best_model.pkl', num_games=5, max_steps=2000):
     except FileNotFoundError:
         print("Error: best_model.pkl not found. Run ga_train.py first.")
         return
-    model = SimpleModel(dims=(15, 50, 50, 4))
+    
+    # Detect the input dimension from the model data
+    input_dim = model_data['DNA'][0].shape[0] if 'DNA' in model_data and model_data['DNA'] else 21
+    
+    # Create the model with the correct dimensions
+    model = SimpleModel(dims=(input_dim, 64, 32, 4))
     model.DNA = model_data['DNA']
     print(f"Loaded model with fitness {model_data['fitness']:.2f} "
           f"(Pop Size: {model_data['pop_size']}, Mut Rate: {model_data['mut_rate']}, "
@@ -24,7 +28,7 @@ def run_best_model(model_file='best_model.pkl', num_games=5, max_steps=2000):
     scores = []
     steps_list = []
     for i in range(num_games):
-        score, steps = game.run(model=model, max_steps=max_steps, display=True)
+        score, steps = game.run(model=model, max_steps=max_steps, display=False)
         scores.append(score)
         steps_list.append(steps)
         print(f"Game {i + 1}: Score = {score}, Steps = {steps}")
