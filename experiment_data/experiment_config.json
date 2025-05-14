@@ -1,0 +1,8 @@
+{
+  "ai_games_per_evaluation": 30,
+  "human_games_required": 30,
+  "game_parameters": {
+    "grid_size": 20,
+    "max_steps": 2000
+  }
+}
