@@ -189,8 +189,9 @@ class GAController(GameController):
                 food_right, food_down                         # Simple food direction (2)
             )
             
-        if self.display:
-            next_move = self.action_space[self.model.action(obs)]
+        # Calculate model output and determine next move (move outside the display condition)
+        next_move = self.action_space[self.model.action(obs)]
+        
         if self.display:
             self.screen.fill('black')
             for i, p in enumerate(self.game.snake.body):
