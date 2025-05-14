@@ -190,8 +190,7 @@ class GAController(GameController):
             )
             
         if self.display:
-            print(f"Obs: {obs}")
-        next_move = self.action_space[self.model.action(obs)]
+            next_move = self.action_space[self.model.action(obs)]
         if self.display:
             self.screen.fill('black')
             for i, p in enumerate(self.game.snake.body):

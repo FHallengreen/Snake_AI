@@ -3,6 +3,8 @@ import csv
 import pickle
 import multiprocessing
 from functools import partial
+import argparse
+import time
 from snake import SnakeGame
 from ga_models.ga_simple import SimpleModel
 
@@ -74,26 +76,25 @@ def evaluate_individual(model, games=3):
         food_proximity = 200 * (1 - final_dist / (game.grid.x + game.grid.y))
         food_rewards += food_proximity + food_progress_rewards
     
-    # Significantly improved fitness function:
-    # 1. Major reward for food eaten (primary goal)
-    # 2. Reward for food proximity and progress toward food
-    # 3. Survival time reward but with diminishing returns
-    # 4. Severe penalties for collisions and not eating
+    # Normalized fitness function with better scaling
     fitness = (
-        # Primary goal: eating food
-        (food_eaten * 20000) + 
+        # Primary goal: eating food with progressive scaling
+        (food_eaten * 100) * (1.0 + food_eaten * 0.1) + 
         
-        # Getting closer to food
-        (max_distance_reduced * 500) + 
-        (food_rewards * 50) +
+        # Getting closer to food - more reward for distance reduction 
+        (max_distance_reduced * 3) + 
+        (food_rewards * 0.3) +
         
         # Survival time with diminishing returns
-        (min(total_steps, 1000) * 2) +  # Full value for first 1000 steps
-        (max(0, total_steps - 1000) * 0.5) +  # Half value for steps beyond 1000
+        (min(total_steps, 1000) * 0.01) +  
+        (max(0, total_steps - 1000) * 0.005) + 
+        
+        # Bonus for high scores with long survival
+        (food_eaten > 20) * (total_steps * 0.03) +
         
         # Penalties
-        (collisions * -2000) -  # Severe penalty for collisions
-        (total_steps_without_food * 10)  # Increased penalty for not eating
+        (collisions * -20) - 
+        (total_steps_without_food * 0.05)
     )
     
     return fitness, total_score, total_steps
@@ -109,9 +110,30 @@ def roulette_wheel_selection(population, fitnesses):
     return np.random.choice(population, p=probabilities)
 
 
-def run_ga_experiment(pop_size, mut_rate, generations=100, games=3):
-    # Use a deeper, wider network architecture with a new layer structure
-    population = [SimpleModel(dims=(21, 128, 64, 32, 4)) for _ in range(pop_size)]
+def run_ga_experiment(pop_size, mut_rate, generations=100, games=3, network_arch=(21, 128, 64, 32, 4), model_class=SimpleModel):
+    """
+    Run a genetic algorithm experiment with the specified parameters.
+    
+    Args:
+        pop_size: Size of the population
+        mut_rate: Base mutation rate
+        generations: Maximum number of generations to run
+        games: Number of games to evaluate each individual
+        network_arch: Neural network architecture as a tuple of layer sizes
+        model_class: The model class to use (SimpleModel or AdvancedModel)
+    """
+    # Initialize population with the specified network architecture and model class
+    print(f"Using network architecture: {network_arch}")
+    print(f"Model class: {model_class.__name__}")
+    
+    # For advanced model, decide whether to use residual connections
+    use_residual = hasattr(model_class, '__name__') and model_class.__name__ == 'AdvancedModel'
+    
+    if use_residual:
+        population = [model_class(dims=network_arch, use_residual=True) for _ in range(pop_size)]
+    else:
+        population = [model_class(dims=network_arch) for _ in range(pop_size)]
+    
     stats = {'avg': [], 'max': [], 'avg_score': [], 'avg_steps': []}
     best_model = None
     best_fitness = -float('inf')
@@ -120,14 +142,17 @@ def run_ga_experiment(pop_size, mut_rate, generations=100, games=3):
     best_gen = 0
     
     # Early stopping parameters
-    patience = 30  # Number of generations with no improvement to wait before stopping
-    min_delta = 0.01  # Minimum change in fitness to qualify as improvement
+    patience = 35  # Increased from 30
+    min_delta = 0.005  # More sensitive to small improvements
     stagnation_counter = 0
     last_best_fitness = -float('inf')
     
     # Determine optimal number of processes based on CPU cores
     num_processes = min(multiprocessing.cpu_count(), pop_size)
     print(f"Using {num_processes} processes for parallel evaluation")
+    
+    # Track time to estimate completion
+    start_time = time.time()
     
     for gen in range(generations):
         # Parallelize the evaluation of individuals
@@ -165,25 +190,25 @@ def run_ga_experiment(pop_size, mut_rate, generations=100, games=3):
             print(f"Early stopping at generation {gen + 1}: No significant improvement for {patience} generations")
             break
         
-        # Improved selection and reproduction strategy
-        # Elitism: Keep top 15% (increased from 10%)
-        elite_count = max(1, pop_size * 15 // 100)
+        # Updated dynamic mutation scheduling
+        if gen < generations * 0.15:  # First 15% - high exploration
+            current_mut_rate = mut_rate * 1.5
+        elif gen < generations * 0.4:  # Early phase - moderate exploration
+            current_mut_rate = mut_rate * 1.2
+        elif gen > generations * 0.8:  # Late phase - fine tuning
+            current_mut_rate = mut_rate * 0.4
+        elif gen > generations * 0.6:  # Middle-late phase
+            current_mut_rate = mut_rate * 0.6
+        else:  # Middle phase
+            current_mut_rate = mut_rate * 0.8
+            
+        # Adaptive elitism - increase as training progresses
+        elite_percent = 0.15 + min(0.2, gen / generations * 0.15)  # 15% to 30%
+        elite_count = max(1, int(pop_size * elite_percent))
         elite_indices = np.argsort(fitnesses)[-elite_count:]
         elites = [population[i] for i in elite_indices]
         
-        # Use a more aggressive early-stage mutation rate that decreases over time
-        # Based on observed learning curves where significant gains happen in early-mid training
-        if gen < generations * 0.2:  # First 20% of generations - exploration phase
-            current_mut_rate = mut_rate * 1.2
-        elif gen > generations * 0.7:  # Last 30% of generations - fine tuning
-            current_mut_rate = mut_rate * 0.5
-        elif gen > generations * 0.5:  # Middle generations
-            current_mut_rate = mut_rate * 0.75
-        else:
-            current_mut_rate = mut_rate
-        
         offspring = []
-        # Tournament selection with larger tournaments for better models
         tournament_size = 4  # Increase from 3 to 4
         
         for _ in range(pop_size - elite_count):
@@ -207,69 +232,85 @@ def run_ga_experiment(pop_size, mut_rate, generations=100, games=3):
 
 
 if __name__ == "__main__":
-    test_mode = False
-    if test_mode:
-        params = [(50, 0.3)]  # Higher mutation rate for testing
-        generations = 50
-        games = 1
+    # Add command line arguments for quick testing and configuration
+    parser = argparse.ArgumentParser(description='Train snake AI using genetic algorithm')
+    parser.add_argument('--quick-test', action='store_true', help='Run a quick test with reduced settings')
+    parser.add_argument('--network', type=str, default='medium', choices=['small', 'medium', 'large'],
+                       help='Network size: small (21,64,32,4), medium (21,128,64,32,4), large (21,256,128,64,4)')
+    args = parser.parse_args()
+    
+    if args.quick_test:
+        print("Running quick test with reduced settings")
+        params = [(100, 0.03, 50, 3)]  # Faster test run
     else:
-        # Updated parameter configurations for shorter but effective training
+        # Updated configurations based on previous results
+        # The best model was from pop=170, mut=0.025
+        # Let's try variations around this point
+        network_arch = {
+            'small': (21, 64, 32, 4),
+            'medium': (21, 128, 64, 32, 4),
+            'large': (21, 256, 128, 64, 4)
+        }[args.network]
+        
         params = [
             # Population, mutation rate, generations, games per evaluation
-            (150, 0.03, 200, 5),   # Medium population, balanced mutation
-            (160, 0.035, 180, 5),  # Slightly higher mutation
-            (170, 0.025, 180, 5),  # Slightly lower mutation
+            (170, 0.025, 200, 5),  # Best configuration from previous run
+            (180, 0.022, 180, 5),  # Slightly larger population, lower mutation
+            (190, 0.020, 180, 5),  # Even larger population, even lower mutation
         ]
-        results = []
-        best_overall_model = None
-        best_overall_fitness = -float('inf')
-        best_overall_params = None
-        best_overall_score = 0
-        best_overall_steps = 0
-        best_overall_gen = 0
-        for param_set in params:
-            pop_size, mut_rate = param_set[0], param_set[1]
-            generations = param_set[2] if len(param_set) > 2 else 200
-            games = param_set[3] if len(param_set) > 3 else 3
-            
-            print(f"Running GA with pop_size={pop_size}, mut_rate={mut_rate}, generations={generations}, games={games}")
-            stats, best_model, best_fitness, best_score, best_steps, best_gen = run_ga_experiment(
-                pop_size, mut_rate, generations=generations, games=games
-            )
-            results.append((pop_size, mut_rate, stats['avg'], stats['max'], stats['avg_score'], stats['avg_steps']))
-            if best_fitness > best_overall_fitness:
-                best_overall_fitness = best_fitness
-                best_overall_model = best_model
-                best_overall_params = (pop_size, mut_rate)
-                best_overall_score = best_score
-                best_overall_steps = best_steps
-                best_overall_gen = best_gen
-        print("\nSummary of Results (Last 10 Generations):")
-        print("Pop Size | Mut Rate | Avg Score | Avg Steps | Max Score | Max Steps")
-        print("-" * 60)
-        with open('results.csv', 'w', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow(['Pop Size', 'Mut Rate', 'Generation', 'Avg Fitness', 'Max Fitness', 'Avg Score', 'Avg Steps'])
-            for pop_size, mut_rate, avg_fitness, max_fitness, avg_scores, avg_steps in results:
-                last_10_scores = avg_scores[-10:] if len(avg_scores) >= 10 else avg_scores
-                last_10_steps = avg_steps[-10:] if len(avg_steps) >= 10 else avg_steps
-                print(f"{pop_size:8} | {mut_rate:8.2f} | {np.mean(last_10_scores):9.2f} | {np.mean(last_10_steps):9.2f} | "
-                      f"{best_score:9.2f} | {best_steps:9.2f}")
-                for gen, (avg_f, max_f, avg_s, avg_t) in enumerate(zip(avg_fitness, max_fitness, avg_scores, avg_steps)):
-                    writer.writerow([pop_size, mut_rate, gen + 1, avg_f, max_f, avg_s, avg_t])
-        if best_overall_model:
-            with open('best_model.pkl', 'wb') as f:
-                pickle.dump({
-                    'DNA': best_overall_model.DNA,
-                    'fitness': best_overall_fitness,
-                    'score': best_overall_score,
-                    'steps': best_overall_steps,
-                    'pop_size': best_overall_params[0],
-                    'mut_rate': best_overall_params[1],
-                    'generation': best_overall_gen,
-                    'games': games
-                }, f)
-            print("\nBest Model Saved:")
-            print(f"Pop Size: {best_overall_params[0]}, Mut Rate: {best_overall_params[1]}")
-            print(f"Fitness: {best_overall_fitness:.2f} (Score: {best_overall_score:.2f}, Steps: {best_overall_steps:.2f})")
-            print(f"Generation: {best_overall_gen + 1}")
+    
+    results = []
+    best_overall_model = None
+    best_overall_fitness = -float('inf')
+    best_overall_params = None
+    best_overall_score = 0
+    best_overall_steps = 0
+    best_overall_gen = 0
+    
+    for param_set in params:
+        pop_size, mut_rate = param_set[0], param_set[1]
+        generations = param_set[2] if len(param_set) > 2 else 150  # Reduced default from 200
+        games = param_set[3] if len(param_set) > 3 else 3
+        
+        print(f"Running GA with pop_size={pop_size}, mut_rate={mut_rate}, generations={generations}, games={games}")
+        stats, best_model, best_fitness, best_score, best_steps, best_gen = run_ga_experiment(
+            pop_size, mut_rate, generations=generations, games=games, network_arch=network_arch
+        )
+        results.append((pop_size, mut_rate, stats['avg'], stats['max'], stats['avg_score'], stats['avg_steps']))
+        if best_fitness > best_overall_fitness:
+            best_overall_fitness = best_fitness
+            best_overall_model = best_model
+            best_overall_params = (pop_size, mut_rate)
+            best_overall_score = best_score
+            best_overall_steps = best_steps
+            best_overall_gen = best_gen
+    
+    print("\nSummary of Results (Last 10 Generations):")
+    print("Pop Size | Mut Rate | Avg Score | Avg Steps | Max Score | Max Steps")
+    print("-" * 60)
+    with open('results.csv', 'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(['Pop Size', 'Mut Rate', 'Generation', 'Avg Fitness', 'Max Fitness', 'Avg Score', 'Avg Steps'])
+        for pop_size, mut_rate, avg_fitness, max_fitness, avg_scores, avg_steps in results:
+            last_10_scores = avg_scores[-10:] if len(avg_scores) >= 10 else avg_scores
+            last_10_steps = avg_steps[-10:] if len(avg_steps) >= 10 else avg_steps
+            print(f"{pop_size:8} | {mut_rate:8.2f} | {np.mean(last_10_scores):9.2f} | {np.mean(last_10_steps):9.2f} | "
+                  f"{best_overall_score:9.2f} | {best_overall_steps:9.2f}")
+            for gen, (avg_f, max_f, avg_s, avg_t) in enumerate(zip(avg_fitness, max_fitness, avg_scores, avg_steps)):
+                writer.writerow([pop_size, mut_rate, gen + 1, avg_f, max_f, avg_s, avg_t])
+    if best_overall_model:
+        with open('best_model.pkl', 'wb') as f:
+            pickle.dump({
+                'DNA': best_overall_model.DNA,
+                'fitness': best_overall_fitness,
+                'score': best_overall_score,
+                'steps': best_overall_steps,
+                'pop_size': best_overall_params[0],
+                'mut_rate': best_overall_params[1],
+                'generation': best_overall_gen,
+                'games': games
+            }, f)
+        print("\nBest Model Saved:")
+        print(f"Pop Size: {best_overall_params[0]}, Mut Rate: {best_overall_params[1]}")
+        print(f"Fitness: {best_overall_fitness:.2f} (Score: {best_overall_score:.2f}, Steps: {best_overall_steps:.2f})")
+        print(f"Generation: {best_overall_gen + 1}")

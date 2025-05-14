@@ -1,4 +1,6 @@
-# Snake Game AI with Genetic Algorithms vs Human Players
+# Snake AI Project
+
+An AI agent that learns to play Snake using genetic algorithms.
 
 ## Abstract
 This study investigates the application of Genetic Algorithms (GA) to evolve neural networks capable of playing the classic Snake game, with performance compared to human players across various skill levels. The research explores whether evolutionary algorithms can produce gaming agents that outperform humans in decision-making speed, strategic planning, and overall score achievement. Using a controlled game environment with identical parameters for both AI and human players, this study quantifies performance differences through statistical analysis of game scores and survival duration. The findings contribute to our understanding of evolutionary algorithms' effectiveness in developing game-playing strategies that may exceed human capabilities in dynamic, constrained environments.
@@ -122,22 +124,80 @@ This research was implemented using Python with the following technologies:
 - Pandas for data analysis
 - Matplotlib and SciPy for statistical analysis and visualization
 
-### Project Structure
-- `snake.py`: Core Snake game implementation
-- `game_controller.py`: Game controller interface and human controller implementation
-- `ga_controller.py`: AI controller using the trained model
-- `ga_models/`: Neural network implementation and GA model definitions
-- `ga_train.py`: Genetic algorithm training script
-- `ga_snake.py`: Script to run the trained AI model
-- `human_performance.py`: Tool for tracking human player performance
-- `compare_performance.py`: Statistical comparison of AI vs human performance
-- `analyze.py`: Statistical analysis utilities
-- `plot_results.py`: Visualization tools
+## Project Structure
 
-### Key Components and Usage
-The implementation allows for:
-1. Training the AI model with variable parameters
-2. Human gameplay and performance recording
-3. AI gameplay using trained models
-4. Statistical analysis and comparison of performance data
-5. Visualization of results for analysis
+- `experiment_manager.py`: Main interface for training and evaluating models
+- `ga_train.py`: Core implementation of the genetic algorithm
+- `continue_training.py`: Script for further training of the best model
+- `snake.py`: Snake game implementation
+- `ga_controller.py`: Interface between AI models and the game
+- `ga_models/`: Directory containing model implementations
+  - `ga_simple.py`: The best-performing model architecture
+  - `ga_protocol.py`: Interface definition for GA models
+  - `activation.py`: Neural network activation functions
+
+## Workflow
+
+### 1. Initial Training
+
+Start by training multiple models to find good hyperparameters:
+
+```bash
+python experiment_manager.py
+```
+
+Select option 2, then answer "y" to use advanced training parameters. This will train multiple models with different configurations.
+
+### 2. Model Selection
+
+After training, select the best model:
+
+```bash
+python experiment_manager.py
+```
+
+Choose option 3. This will evaluate all models and select the best performing one.
+
+### 3. Continued Training
+
+To further improve the best model:
+
+```bash
+python continue_training.py
+```
+
+This creates a new population based on the best model and continues training, often resulting in significant improvements.
+
+### 4. Evaluation
+
+To evaluate model performance:
+
+```bash
+python ga_snake.py
+```
+
+By default, this runs the best model for 10 games and reports statistics.
+
+## Neural Network Size
+
+The project supports various neural network architectures:
+
+- **Small** (21, 64, 32, 4): ~320 parameters, trains quickly
+- **Medium** (21, 128, 64, 32, 4): ~12,000 parameters, best overall performance
+- **Large** (21, 256, 128, 64, 4): ~40,000 parameters, no additional benefit
+
+The medium architecture provides the best balance between model capacity and trainability.
+
+## Role of Each Component
+
+- **experiment_manager.py**: User-friendly interface for all training and evaluation workflows
+- **ga_train.py**: Contains the core genetic algorithm implementation with fitness evaluation and selection mechanisms
+- **continue_training.py**: Specialized script for refining an existing model
+- **ga_models/ga_simple.py**: The neural network architecture for the Snake AI agent
+
+## Additional Resources
+
+See these files for detailed information:
+
+- `optimization_log.md`: Complete history of optimizations and their impact
+- `what_works.md`: Summary of techniques that proved effective

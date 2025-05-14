@@ -62,20 +62,25 @@ class ExperimentManager:
         
         Args:
             models_to_evaluate: Number of different models to prepare
-            advanced_training: Whether to use advanced training (more generations, better params)
+            advanced_training: Whether to use advanced training parameters
         """
         from ga_train import run_ga_experiment
+        from ga_models.ga_simple import SimpleModel
+        
+        # Always use the standard SimpleModel as it consistently performs better
+        model_class = SimpleModel
+        print("\n=== Using Standard Network Model ===")
         
         # Check if user wants advanced training
         if advanced_training:
             print("\n=== Using Advanced Training Parameters ===")
             print("This will take longer but produce better models")
             
-            # Reduced generations from 350 to 200, as data shows major improvements happen by gen 200
+            # Best-performing configurations based on previous results
             configs = [
-                {'pop_size': 150, 'mut_rate': 0.03, 'generations': 200, 'games': 5},  # Best-performing config
-                {'pop_size': 160, 'mut_rate': 0.035, 'generations': 180, 'games': 5}, # Slightly higher mutation
-                {'pop_size': 170, 'mut_rate': 0.025, 'generations': 180, 'games': 5}  # Slightly lower mutation
+                {'pop_size': 150, 'mut_rate': 0.035, 'generations': 180, 'games': 5},  # Best configuration 
+                {'pop_size': 150, 'mut_rate': 0.03, 'generations': 180, 'games': 5},   # Second best
+                {'pop_size': 150, 'mut_rate': 0.032, 'generations': 180, 'games': 5}   # Third best
             ][:models_to_evaluate]
         else:
             print("\n=== Using Standard Training Parameters ===")
@@ -83,10 +88,13 @@ class ExperimentManager:
             
             # Reduced generations for faster results
             configs = [
-                {'pop_size': 100, 'mut_rate': 0.03, 'generations': 80, 'games': 3},
-                {'pop_size': 120, 'mut_rate': 0.035, 'generations': 80, 'games': 3},
-                {'pop_size': 130, 'mut_rate': 0.025, 'generations': 80, 'games': 3}
+                {'pop_size': 120, 'mut_rate': 0.025, 'generations': 80, 'games': 3},
+                {'pop_size': 130, 'mut_rate': 0.03, 'generations': 80, 'games': 3},
+                {'pop_size': 110, 'mut_rate': 0.028, 'generations': 80, 'games': 3}
             ][:models_to_evaluate]
+        
+        # Standard architecture that worked well
+        network_arch = (21, 128, 64, 32, 4) if advanced_training else (21, 64, 32, 4)
         
         for i, config in enumerate(configs):
             print(f"\nTraining model {i+1}/{len(configs)}")
@@ -97,7 +105,9 @@ class ExperimentManager:
                 pop_size=config['pop_size'], 
                 mut_rate=config['mut_rate'], 
                 generations=config['generations'],
-                games=config['games']
+                games=config['games'],
+                network_arch=network_arch,
+                model_class=model_class
             )
             
             # Save model
@@ -138,7 +148,7 @@ class ExperimentManager:
         if not model_files:
             print("No models found. Please run prepare_ga_models first.")
             return None
-            
+                
         results = []
         
         for model_file in model_files:
@@ -151,7 +161,7 @@ class ExperimentManager:
                 
             # Run evaluation (without display)
             avg_score, avg_steps, _ = self._evaluate_model(model_path, 
-                                                         num_games=10,
+                                                         num_games=10, 
                                                          display=False)
             
             results.append({
@@ -194,26 +204,47 @@ class ExperimentManager:
         from snake import SnakeGame
         from ga_models.ga_simple import SimpleModel
         
+        try:
+            # For backward compatibility
+            from ga_models.ga_advanced import AdvancedModel
+            has_advanced_model = True
+        except ImportError:
+            has_advanced_model = False
+        
         # Load the model
         with open(model_path, 'rb') as f:
             model_data = pickle.load(f)
         
         # Determine input dimension from model's DNA
-        if 'DNA' in model_data and model_data['DNA']:
-            input_dim = model_data['DNA'][0].shape[0]
+        dna = model_data.get('DNA', None)
+        if dna:
+            if isinstance(dna, tuple) and len(dna) > 0 and dna[0]:
+                # This is likely an AdvancedModel with (main_weights, residual_weights)
+                input_dim = dna[0][0].shape[0]
+                model_type = 'advanced'
+            elif isinstance(dna, list) and len(dna) > 0:
+                # This is likely a SimpleModel
+                input_dim = dna[0].shape[0]
+                model_type = 'simple'
+            else:
+                input_dim = 21
+                model_type = 'simple'
         else:
-            input_dim = 21  # Default
-            
-        print(f"Model input dimension: {input_dim}")
-            
-        # Create model with the correct dimensions
-        if input_dim == 15:
-            model = SimpleModel(dims=(15, 50, 50, 4))
-        elif input_dim == 18:
-            model = SimpleModel(dims=(18, 50, 50, 4))
+            input_dim = 21
+            model_type = 'simple'
+                
+        print(f"Model input dimension: {input_dim}, Model type: {model_type}")
+        
+        # Create the appropriate model with the correct dimensions
+        if model_type == 'advanced' and has_advanced_model:
+            # For backward compatibility with previously saved advanced models
+            print("Note: This is an advanced model from a previous run. Consider retraining with SimpleModel.")
+            model = AdvancedModel(dims=(input_dim, 128, 64, 32, 4))
         else:
-            model = SimpleModel(dims=(21, 50, 50, 4))
-            
+            # Default to SimpleModel for all new models
+            model = SimpleModel(dims=(input_dim, 128, 64, 32, 4))
+        
+        # Set the model's DNA
         model.DNA = model_data['DNA']
         
         # Run games
@@ -255,11 +286,11 @@ class ExperimentManager:
         
         # Count total games played by humans
         total_games = sum(len(session['scores']) for session in tracker.results['sessions'])
-        
+            
         if total_games >= self.config['human_games_required']:
             print(f"Human data collection complete! ({total_games} games recorded)")
             return
-            
+             
         print(f"Human data collection in progress: {total_games}/{self.config['human_games_required']} games")
         print("Please run the human_performance.py script to collect more data.")
         
@@ -403,27 +434,24 @@ def main():
                 advanced = input("Use advanced training? This takes longer but produces better models. (y/n): ").lower()
                 advanced_training = advanced.startswith('y')
                 
-                manager.prepare_ga_models(models_to_evaluate=models, advanced_training=advanced_training)
+                manager.prepare_ga_models(
+                    models_to_evaluate=models, 
+                    advanced_training=advanced_training
+                )
             except ValueError:
                 print("Invalid input. Using default values.")
                 manager.prepare_ga_models()
-                
         elif choice == '3':
             manager.select_best_model()
-            
         elif choice == '4':
             manager.collect_human_data()
             
         elif choice == '5':
             manager.run_final_experiment()
-            
+        elif choice == '5':
+            manager.run_final_experiment()
         elif choice == '6':
             print("Exiting Experiment Manager.")
             break
-            
-        else:
-            print("Invalid choice. Please try again.")
-
-
 if __name__ == "__main__":
     main()

@@ -21,62 +21,84 @@ class SimpleModel(GAModel):
         self._DNA = []
         for i, dim in enumerate(dims):
             if i < len(dims) - 1:
-                # Initialize with Xavier/Glorot initialization for better convergence
-                std_dev = np.sqrt(2.0 / (dim + dims[i+1]))
+                # Enhanced initialization - He initialization for better deep network training
+                if i == 0:  # Input layer - use smaller initialization
+                    std_dev = np.sqrt(1.0 / dims[i+1])
+                else:  # Hidden layers - use He initialization
+                    std_dev = np.sqrt(2.0 / dims[i])
                 self._DNA.append(np.random.normal(0, std_dev, (dim, dims[i+1])))
 
     def update(self, obs: Sequence) -> Tuple[int, ...]:
         x = np.array(obs, dtype=np.float32)  # Ensure float32 for better performance
         for i, layer in enumerate(self._DNA):
-            # Ensure optimal dtype for computation
             layer_np = np.array(layer, dtype=np.float32)
             
-            # Apply activation (not on input layer)
-            x = leaky_relu(x, alpha=0.1) if i > 0 else x
+            # Improved activation function selection
+            if i > 0:
+                # Use leaky_relu for hidden layers
+                x = leaky_relu(x, alpha=0.1)
             
-            # Matrix multiplication
             x = x @ layer_np
+            
         return softmax(x)
 
     def action(self, obs: Sequence):
         return self.update(obs).argmax()
 
     def mutate(self, mutation_rate) -> None:
-        for layer in self._DNA:
-            # Standard mutation
+        for i, layer in enumerate(self._DNA):
+            # Base mutation rate logic (from existing code)
             mask = np.random.random(layer.shape) < mutation_rate
             if np.sum(mask) > 0:
                 layer[mask] += np.random.normal(0, 0.2, size=np.sum(mask))
                 
-            # Strong mutations (10% chance)
-            strong_mutation_mask = np.random.random(layer.shape) < (mutation_rate * 0.1)
+            # Layer-specific mutation rates - earlier layers more stable, later layers more plastic
+            layer_mut_scale = 1.0 + (i * 0.1)  # Increase mutation impact for deeper layers
+            
+            # Strong mutations with layer-specific scaling
+            strong_rate = mutation_rate * 0.1 * layer_mut_scale
+            strong_mutation_mask = np.random.random(layer.shape) < strong_rate
             if np.sum(strong_mutation_mask) > 0:
                 layer[strong_mutation_mask] += np.random.normal(0, 0.5, size=np.sum(strong_mutation_mask))
                 
-            # Rare neuron reset (1% chance) - helps escape local minima
-            reset_mask = np.random.random(layer.shape) < (mutation_rate * 0.01)
+            # Random neuron reset with layer-specific probability
+            reset_rate = mutation_rate * 0.01 * (1.0 + i * 0.2)  # Higher reset chance for deeper layers
+            reset_mask = np.random.random(layer.shape) < reset_rate
             if np.sum(reset_mask) > 0:
-                # Reset to new random weights using Xavier initialization
-                std_dev = np.sqrt(2.0 / (layer.shape[0] + layer.shape[1]))
+                if i == 0:  # Input layer
+                    std_dev = np.sqrt(1.0 / layer.shape[1])
+                else:  # Hidden layers
+                    std_dev = np.sqrt(2.0 / layer.shape[0])
                 layer[reset_mask] = np.random.normal(0, std_dev, size=np.sum(reset_mask))
 
     def __add__(self, other):
+        # Improved crossover with BLX-alpha and adaptive scaling
         baby_DNA = []
-        # Use BLX-alpha crossover instead of simple weighted average
-        # This allows exploration beyond the parents' values
-        alpha = 0.3  # BLX-alpha parameter
-        for mom, dad in zip(self._DNA, other._DNA):
-            # Calculate min and max for each weight
+        alpha = 0.3
+        
+        # Random interpolation scale for each layer
+        for i, (mom, dad) in enumerate(zip(self._DNA, other._DNA)):
+            # Dynamic adaptation: exploration factor increases with layer depth
+            layer_alpha = alpha * (1 + i * 0.05)  # Deeper layers explore more
+            
             mins = np.minimum(mom, dad)
             maxs = np.maximum(mom, dad)
             range_w = maxs - mins
             
-            # Extend the range by alpha in both directions
-            extended_mins = mins - alpha * range_w
-            extended_maxs = maxs + alpha * range_w
+            extended_mins = mins - layer_alpha * range_w
+            extended_maxs = maxs + layer_alpha * range_w
             
-            # Generate random values within the extended range
-            baby_layer = np.random.uniform(extended_mins, extended_maxs, mom.shape)
+            # Weighted interpolation (not just uniform randomness)
+            # Give more weight to the better parent (assumed to be "mom" as first arg)
+            weight_mom = np.random.uniform(0.5, 0.8)  # 50-80% weight to first parent
+            weight_dad = 1.0 - weight_mom
+            
+            # Generate offspring with weighted contribution plus exploration
+            base_weights = mom * weight_mom + dad * weight_dad
+            exploration = np.random.uniform(extended_mins, extended_maxs, mom.shape) - base_weights
+            exploration_factor = 0.3  # How much pure exploration to add
+            
+            baby_layer = base_weights + exploration * exploration_factor
             baby_DNA.append(baby_layer.copy())
             
         baby = type(self)(dims=self.dims)
