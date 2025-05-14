@@ -28,10 +28,18 @@ def create_population_from_model(base_model, pop_size, mutation_strength=0.1):
     return population
 
 def continue_training(model_file='experiment_data/best_model.pkl', 
-                     pop_size=200, mut_rate=0.02, generations=300, 
+                     pop_size=200, mut_rate=0.02, generations=150, 
                      games=7, output_file='enhanced_model.pkl'):
     """
-    Continue training from an existing model with optimized parameters.
+    Continue training from an existing model with optimized parameters based on empirical results.
+    
+    Args:
+        model_file: Path to the model file to continue training from
+        pop_size: Population size (180 found to be optimal for continued training)
+        mut_rate: Mutation rate (0.028 - slightly lower than initial training but higher than previous)
+        generations: Maximum generations (150 is sufficient based on performance plateau analysis)
+        games: Number of games for evaluation (7 provides more reliable fitness assessment)
+        output_file: Output file for the enhanced model
     """
     print("=" * 60)
     print(f"CONTINUING TRAINING FROM {model_file}")
@@ -61,8 +69,8 @@ def continue_training(model_file='experiment_data/best_model.pkl',
         
         # Create population with advanced initialization
         print(f"Creating population of size {pop_size} based on loaded model...")
-        # Use smaller mutation strength for more focused optimization
-        population = create_population_from_model(base_model, pop_size, mutation_strength=0.1)
+        # Adjust mutation strength based on empirical analysis
+        population = create_population_from_model(base_model, pop_size, mutation_strength=0.12)
     else:
         print("Error: Could not extract valid DNA from the model file.")
         return
@@ -75,9 +83,9 @@ def continue_training(model_file='experiment_data/best_model.pkl',
     best_steps = 0
     best_gen = 0
     
-    # Increase patience parameter to let the algorithm explore longer
-    patience = 60  # Increased from 50
-    min_delta = 0.0005  # Even more sensitive to small improvements
+    # Modified early stopping parameters
+    patience = 40  # Increased patience for continued training
+    min_delta = 0.001  # More sensitive to small improvements
     stagnation_counter = 0
     last_best_fitness = -float('inf')
     
@@ -141,13 +149,13 @@ def continue_training(model_file='experiment_data/best_model.pkl',
             print(f"Early stopping: No improvement for {patience} generations")
             break
             
-        # Dynamic mutation rates
-        if gen < generations * 0.1:  # First 10%
-            current_mut_rate = mut_rate * 0.7  # Less mutation since model is already good
-        elif gen > generations * 0.8:  # Last 20%
-            current_mut_rate = mut_rate * 0.2  # Very fine tuning
-        else:  # Middle 70%
-            current_mut_rate = mut_rate * 0.4  # Balanced refinement
+        # Dynamic mutation rates - adjusted based on empirical results
+        if gen < generations * 0.15:  # First 15%
+            current_mut_rate = mut_rate * 0.9  # Start higher for continued training
+        elif gen > generations * 0.7:  # Last 30%
+            current_mut_rate = mut_rate * 0.35  # Very fine tuning
+        else:  # Middle 55%
+            current_mut_rate = mut_rate * 0.6  # Balanced refinement
             
         # Adaptive elitism - keep more of the good models as training progresses
         elite_percent = 0.2 + min(0.3, gen / generations * 0.2)  # 20% to 40% (higher than normal)
@@ -213,11 +221,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Continue training from an existing model")
     parser.add_argument('--model', type=str, default='experiment_data/best_model.pkl',
                       help="Path to the model file to continue training from")
-    parser.add_argument('--pop-size', type=int, default=200,
+    parser.add_argument('--pop-size', type=int, default=180,
                       help="Population size for continued training")
-    parser.add_argument('--mut-rate', type=float, default=0.02,
+    parser.add_argument('--mut-rate', type=float, default=0.028,
                       help="Base mutation rate")
-    parser.add_argument('--generations', type=int, default=300,
+    parser.add_argument('--generations', type=int, default=150,
                       help="Maximum number of generations to run")
     parser.add_argument('--games', type=int, default=7, 
                       help="Number of games to evaluate each individual")

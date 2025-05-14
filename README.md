@@ -195,6 +195,21 @@ The medium architecture provides the best balance between model capacity and tra
 - **continue_training.py**: Specialized script for refining an existing model
 - **ga_models/ga_simple.py**: The neural network architecture for the Snake AI agent
 
+## Performance Highlights
+
+Our best Snake AI model achieved remarkable results:
+- **Average Score**: 49.80 ± 14.16 (latest evaluation)
+- **Maximum Score**: 72.00
+- **Median Score**: 53.00
+- **Training through**: Genetic algorithm with neural networks
+- **Architecture**: (21, 128, 64, 32, 4) SimpleModel
+
+### Key Performance Improvements
+Through our two-stage training approach:
+- Maximum score improved by 22.0% (59 → 72)
+- Median score improved by 13.9% (46.5 → 53.0)
+- Average survival time increased by 15.3%
+
 ## Additional Resources
 
 See these files for detailed information:

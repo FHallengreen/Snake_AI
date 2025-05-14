@@ -1,14 +1,43 @@
 # Snake AI Optimization Log
 
-This document records all optimizations made to the Snake AI project and their impact on performance.
-
 ## Performance Summary
 
 Our best model achieved:
-- **Training score**: 53.00
-- **Validation score**: 37.50
-- **Best configuration**: Population size 150, mutation rate 0.03, SimpleModel architecture
+- **Original model**:
+  - Training score: 52.80
+  - Validation score: 46.80 ± 8.57 (latest evaluation)
+  - Best configuration: Population size 150, mutation rate 0.032
+
+- **Enhanced model** (after continued training):
+  - Training score: 58.00
+  - Validation score: 49.80 ± 14.16 (latest evaluation)
+  - Improvement: 9.8% in training, 6.4% in validation
+
 - **Network architecture**: (21, 128, 64, 32, 4)
+
+## Latest Results
+
+### Continued Training Performance
+The continued training approach yielded significant improvements:
+- Population size: 180
+- Mutation rate: 0.028
+- Generations needed: 134 (out of 150 maximum)
+- Improvement: 5.20 points (9.8%) in training score
+- Best enhanced model score: 58.00 (up from 52.80)
+- Enhanced validation performance: 49.80 (up from 46.80)
+- Maximum achieved score: 72.00 (up from 59.00)
+- Median score: 53.00 (up from 46.50)
+- Average steps: 1350.70 (up from 1171.70)
+
+### Key Performance Metrics Comparison
+
+| Metric | Original Model | Enhanced Model | Improvement |
+|--------|--------------|--------------|------------|
+| Training Score | 52.80 | 58.00 | 9.8% |
+| Validation Score | 46.80 | 49.80 | 6.4% |
+| Maximum Score | 59.00 | 72.00 | 22.0% |
+| Median Score | 46.50 | 53.00 | 13.9% |
+| Average Steps | 1171.70 | 1350.70 | 15.3% |
 
 ## Optimization History
 

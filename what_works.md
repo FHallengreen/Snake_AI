@@ -6,37 +6,44 @@ This document captures our findings about which approaches produce the best resu
 
 The **SimpleModel** with a neural network structure of `(21, 128, 64, 32, 4)` consistently achieves the best results:
 
-- Top score: ~48.60 in training, ~40.50 in validation
-- Best hyperparameters: Population size 170, mutation rate 0.025
+- **Original model**:
+  - Training score: 52.80
+  - Validation score: 46.80 ± 8.57
+  - Best configuration: Population size 150, mutation rate 0.032
 
-## What Works Well
+- **Enhanced model** (after continued training):
+  - Training score: 58.00
+  - Validation score: 49.80 ± 14.16
+  - Maximum score: 72.00
+  - Median score: 53.00
+  - Continued training parameters: Population size 180, mutation rate 0.028
 
-1. **Neural Network Architecture**
+## What Works Best
+
+1. **Two-Stage Training Approach**
+   - Initial training to find good base models and hyperparameters
+   - Continued training from the best model with adjusted parameters
+   - This approach yields ~6-10% performance improvements in average score
+   - Produces ~22% improvement in maximum score capability
+   - Improves median performance by ~14%
+
+2. **Continued Training Parameters**
+   - Population size 180 (increased from original training)
+   - Mutation rate 0.028 (slightly lower than original training)
+   - Higher elitism rates (20-40%) to preserve good solutions
+   - Increased games per evaluation (7 instead of 5)
+   - Adaptive mutation rates that decrease over generations
+
+3. **Neural Network Architecture**
    - 4-layer network (21, 128, 64, 32, 4) with the original SimpleModel
    - Leaky ReLU activation functions with alpha=0.1
    - Softmax output layer
 
-2. **Genetic Algorithm Parameters**
-   - Population sizes between 150-170
-   - Mutation rates between 0.025-0.03
-   - Adaptive mutation rates starting higher and decreasing over time
-   - Tournament selection with tournament size 4
-   - Elitism (preserving 15-20% of best individuals)
-
-3. **Feature Engineering**
-   - 21 input features including:
-     - Wall distances
-     - Food position (relative and absolute)
-     - Danger detection
-     - Current velocity
-     - Food direction indicators
-     - Body length (normalized)
-
-4. **Training Approach**
-   - 5 games per fitness evaluation
-   - 200 generations (or early stopping)
-   - BLX-alpha crossover (alpha=0.3)
-   - Multiprocessing for parallel evaluation
+4. **Genetic Algorithm Parameters**
+   - Population sizes between 150-180
+   - Mutation rates between 0.025-0.032
+   - Tournament selection with size 5 for continued training
+   - Elitism with 15-20% for initial training, 20-40% for continued training
 
 ## What Doesn't Work Well
 
