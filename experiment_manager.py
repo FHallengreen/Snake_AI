@@ -78,8 +78,8 @@ class ExperimentManager:
             
             # Best-performing configurations based on previous results
             configs = [
-                {'pop_size': 150, 'mut_rate': 0.035, 'generations': 180, 'games': 5},  # Best configuration 
-                {'pop_size': 150, 'mut_rate': 0.03, 'generations': 180, 'games': 5},   # Second best
+                {'pop_size': 160, 'mut_rate': 0.032, 'generations': 180, 'games': 5},  # Best configuration 
+                {'pop_size': 170, 'mut_rate': 0.032, 'generations': 180, 'games': 5},   # Second best
                 {'pop_size': 150, 'mut_rate': 0.032, 'generations': 180, 'games': 5}   # Third best
             ][:models_to_evaluate]
         else:

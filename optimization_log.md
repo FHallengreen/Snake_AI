@@ -79,6 +79,12 @@ Our best model achieved:
    - Applied lower mutation rates for refinement rather than exploration
    - Used larger tournament sizes (5) for stronger selection pressure
 
+5. **Best Model Preservation**
+   - The training algorithm maintains the best model encountered across all generations
+   - Even when performance plateaus, the best weights are preserved
+   - Model 3 achieved its peak performance (52.80) at generation 162, which was saved despite training continuing to generation 180
+   - Validation performance (40.00) confirms the model generalizes well to new scenarios
+
 ### Neural Network Size Impact
 
 After extensive testing, we've found that:

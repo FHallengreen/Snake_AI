@@ -1,21 +1,39 @@
 [
   {
+    "model_file": "model_1_pop150_mut0.035.pkl",
+    "model_path": "experiment_data/ai_models/model_1_pop150_mut0.035.pkl",
+    "pop_size": 150,
+    "mut_rate": 0.035,
+    "generation": 164,
+    "validation_score": 29.9,
+    "validation_steps": 721.7
+  },
+  {
     "model_file": "model_1_pop170_mut0.025.pkl",
     "model_path": "experiment_data/ai_models/model_1_pop170_mut0.025.pkl",
     "pop_size": 170,
     "mut_rate": 0.025,
     "generation": 8,
-    "validation_score": 0.6,
-    "validation_steps": 1802.6
+    "validation_score": 1.0,
+    "validation_steps": 1604.9
   },
   {
     "model_file": "model_2_pop150_mut0.03.pkl",
     "model_path": "experiment_data/ai_models/model_2_pop150_mut0.03.pkl",
     "pop_size": 150,
     "mut_rate": 0.03,
-    "generation": 170,
-    "validation_score": 23.8,
-    "validation_steps": 399.9
+    "generation": 175,
+    "validation_score": 35.5,
+    "validation_steps": 833.6
+  },
+  {
+    "model_file": "model_3_pop150_mut0.032.pkl",
+    "model_path": "experiment_data/ai_models/model_3_pop150_mut0.032.pkl",
+    "pop_size": 150,
+    "mut_rate": 0.032,
+    "generation": 161,
+    "validation_score": 40.0,
+    "validation_steps": 1011.0
   },
   {
     "model_file": "model_3_pop160_mut0.028.pkl",
@@ -23,7 +41,7 @@
     "pop_size": 160,
     "mut_rate": 0.028,
     "generation": 172,
-    "validation_score": 15.0,
-    "validation_steps": 209.9
+    "validation_score": 18.0,
+    "validation_steps": 265.5
   }
 ]
