@@ -28,7 +28,7 @@ def detect_network_architecture(model_data):
     return (21, 128, 64, 32, 4)
 
 
-def run_best_model(model_file='experiment_data/best_model.pkl', 
+def run_best_model(model_file='experiment_data/best_ai/enhanced_model_final.pkl', 
                    num_games=10, max_steps=2000, display=False,
                    save_stats=False, output_dir=None):
     """
@@ -176,9 +176,105 @@ def compare_models(original='experiment_data/best_model.pkl',
             print("The improvement is not statistically significant (p >= 0.05)")
 
 
+def run_test_evaluation(model_file='experiment_data/best_ai/enhanced_model_final.pkl', 
+                      num_games=30, custom_config=False):
+    """
+    Run a formal test evaluation.
+    
+    Args:
+        model_file: Path to the model file to test
+        num_games: Number of test games to run (should be 30+ for statistical validity)
+        custom_config: Unused parameter (kept for backward compatibility)
+    """
+    print("\n" + "=" * 60)
+    print("FORMAL TEST EVALUATION")
+    print("=" * 60)
+    
+    try:
+        with open(model_file, 'rb') as f:
+            model_data = pickle.load(f)
+    except FileNotFoundError:
+        print(f"Error: {model_file} not found.")
+        return
+    
+    # Load the model
+    dims = detect_network_architecture(model_data)
+    model = SimpleModel(dims=dims)
+    model.DNA = model_data['DNA']
+    
+    # Only use the standard configuration - no custom board sizes
+    test_configs = [
+        {"xsize": 20, "ysize": 20, "max_steps": 2000},  # Standard configuration
+    ]
+    
+    all_scores = []
+    all_steps = []
+    config_results = []
+    
+    # Run tests for each configuration
+    for config_idx, config in enumerate(test_configs):
+        print(f"\nTest configuration {config_idx+1}: Grid size {config['xsize']}×{config['ysize']}")
+        
+        game = SnakeGame(xsize=config['xsize'], ysize=config['ysize'])
+        scores = []
+        steps_list = []
+        
+        for i in range(num_games):
+            score, steps = game.run(model=model, max_steps=config['max_steps'])
+            scores.append(score)
+            steps_list.append(steps)
+            
+        avg_score = np.mean(scores)
+        std_score = np.std(scores)
+        
+        print(f"Average Score: {avg_score:.2f} ± {std_score:.2f}")
+        print(f"Average Steps: {np.mean(steps_list):.2f}")
+        
+        all_scores.extend(scores)
+        all_steps.extend(steps_list)
+        config_results.append({
+            "config": config,
+            "avg_score": float(avg_score),
+            "std_score": float(std_score),
+            "avg_steps": float(np.mean(steps_list)),
+            "min_score": float(np.min(scores)),
+            "max_score": float(np.max(scores))
+        })
+    
+    # Overall results
+    print("\n" + "=" * 60)
+    print(f"OVERALL TEST RESULTS ({len(all_scores)} games)")
+    print("=" * 60)
+    print(f"Average Score: {np.mean(all_scores):.2f} ± {np.std(all_scores):.2f}")
+    print(f"Median Score: {np.median(all_scores):.2f}")
+    print(f"Average Steps: {np.mean(all_steps):.2f}")
+    
+    # Save test results
+    test_results = {
+        "model_file": model_file,
+        "num_games": num_games,
+        "overall_avg_score": float(np.mean(all_scores)),
+        "overall_std_score": float(np.std(all_scores)),
+        "overall_median_score": float(np.median(all_scores)),
+        "config_results": config_results,
+        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+    }
+    
+    os.makedirs("test_results", exist_ok=True)
+    model_name = os.path.basename(model_file).split('.')[0]
+    result_file = f"test_results/{model_name}_test_{num_games}games.json"
+    
+    import json
+    with open(result_file, 'w') as f:
+        json.dump(test_results, f, indent=4)
+    
+    print(f"\nTest results saved to {result_file}")
+    return test_results
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run evaluation of trained Snake AI models")
-    parser.add_argument('--model', type=str, default='experiment_data/best_model.pkl',
+    parser.add_argument('--model', type=str, default='experiment_data/best_ai/enhanced_model_final.pkl',
                       help="Path to the model file to evaluate")
     parser.add_argument('--games', type=int, default=10, 
                       help="Number of games to run for evaluation")
@@ -190,10 +286,20 @@ if __name__ == "__main__":
                       help="Save evaluation statistics to a file")
     parser.add_argument('--compare', type=str, default=None,
                       help="Path to another model to compare with")
+    parser.add_argument('--test', action='store_true',
+                      help="Run formal test evaluation")
+    parser.add_argument('--test-games', type=int, default=30,
+                      help="Number of games for formal testing (default: 30)")
     
     args = parser.parse_args()
     
-    if args.compare:
+    if args.test:
+        # Run formal test evaluation
+        run_test_evaluation(
+            model_file=args.model,
+            num_games=args.test_games
+        )
+    elif args.compare:
         # Compare this model with another
         compare_models(original=args.model, enhanced=args.compare, num_games=args.games)
     else:

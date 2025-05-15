@@ -27,10 +27,11 @@ class ExperimentManager:
         self.ai_models_dir = os.path.join(experiment_dir, 'ai_models')
         self.human_data_dir = os.path.join(experiment_dir, 'human_data')
         self.results_dir = os.path.join(experiment_dir, 'results')
+        self.best_ai_dir = os.path.join(experiment_dir, 'best_ai')  # Updated to be inside experiment_dir
         
         # Create directories if they don't exist
         for directory in [self.experiment_dir, self.ai_models_dir, 
-                         self.human_data_dir, self.results_dir]:
+                         self.human_data_dir, self.results_dir, self.best_ai_dir]:
             if not os.path.exists(directory):
                 os.makedirs(directory)
                 
@@ -76,24 +77,24 @@ class ExperimentManager:
             print("\n=== Using Advanced Training Parameters ===")
             print("This will take longer but produce better models")
             
-            # Best-performing configurations based on previous results
+            # Best-performing configurations based on evaluation results
             configs = [
-                {'pop_size': 160, 'mut_rate': 0.032, 'generations': 180, 'games': 5},  # Best configuration 
-                {'pop_size': 170, 'mut_rate': 0.032, 'generations': 180, 'games': 5},   # Second best
-                {'pop_size': 150, 'mut_rate': 0.032, 'generations': 180, 'games': 5}   # Third best
+                {'pop_size': 150, 'mut_rate': 0.035, 'generations': 170, 'games': 5},  # Best configuration 
+                {'pop_size': 150, 'mut_rate': 0.032, 'generations': 170, 'games': 5},  # Second best
+                {'pop_size': 150, 'mut_rate': 0.03, 'generations': 170, 'games': 5}    # Third best
             ][:models_to_evaluate]
         else:
             print("\n=== Using Standard Training Parameters ===")
             print("For better models, consider using advanced training")
             
-            # Reduced generations for faster results
+            # Reduced generations for faster results, but still optimized parameters
             configs = [
-                {'pop_size': 120, 'mut_rate': 0.025, 'generations': 80, 'games': 3},
-                {'pop_size': 130, 'mut_rate': 0.03, 'generations': 80, 'games': 3},
-                {'pop_size': 110, 'mut_rate': 0.028, 'generations': 80, 'games': 3}
+                {'pop_size': 150, 'mut_rate': 0.035, 'generations': 100, 'games': 3},
+                {'pop_size': 150, 'mut_rate': 0.032, 'generations': 100, 'games': 3},
+                {'pop_size': 150, 'mut_rate': 0.03, 'generations': 100, 'games': 3}
             ][:models_to_evaluate]
         
-        # Standard architecture that worked well
+        # Standard architecture that worked well - keep current logic
         network_arch = (21, 128, 64, 32, 4) if advanced_training else (21, 64, 32, 4)
         
         for i, config in enumerate(configs):
@@ -167,9 +168,9 @@ class ExperimentManager:
             results.append({
                 'model_file': model_file,
                 'model_path': model_path,
-                'pop_size': model_data['pop_size'],
-                'mut_rate': model_data['mut_rate'],
-                'generation': model_data['generation'],
+                'pop_size': model_data.get('pop_size', 'N/A'),
+                'mut_rate': model_data.get('mut_rate', 'N/A'),
+                'generation': model_data.get('generation', 'N/A'),
                 'validation_score': avg_score,
                 'validation_steps': avg_steps
             })
@@ -186,12 +187,16 @@ class ExperimentManager:
         print(f"Best Model: {best_model['model_file']}")
         print(f"Average Score: {best_model['validation_score']:.2f}")
         
-        # Copy the best model to a standard location
+        # Copy the best model to both standard location and best_ai folder
         import shutil
         best_model_path = os.path.join(self.experiment_dir, 'best_model.pkl')
+        best_ai_path = os.path.join(self.best_ai_dir, 'best_model.pkl')
+        
         shutil.copy(best_model['model_path'], best_model_path)
+        shutil.copy(best_model['model_path'], best_ai_path)
         
         print(f"Best model copied to {best_model_path}")
+        print(f"Best model also saved to {best_ai_path}")
         return best_model_path
     
     def _evaluate_model(self, model_path, num_games=10, display=False):
@@ -302,12 +307,16 @@ class ExperimentManager:
         
         print("\n=== RUNNING FINAL EXPERIMENT ===\n")
         
-        # Best model path
-        best_model_path = os.path.join(self.experiment_dir, 'best_model.pkl')
-        if not os.path.exists(best_model_path):
-            best_model_path = self.select_best_model()
-            if not best_model_path:
-                return
+        # Best model path - check best_ai folder first
+        best_ai_path = os.path.join(self.best_ai_dir, 'enhanced_model_final.pkl')
+        if os.path.exists(best_ai_path):
+            best_model_path = best_ai_path
+        else:
+            best_model_path = os.path.join(self.experiment_dir, 'best_model.pkl')
+            if not os.path.exists(best_model_path):
+                best_model_path = self.select_best_model()
+                if not best_model_path:
+                    return
                 
         # Run performance analysis
         analyzer = PerformanceAnalyzer(ai_model_file=best_model_path)

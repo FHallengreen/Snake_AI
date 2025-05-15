@@ -45,6 +45,37 @@ The **SimpleModel** with a neural network structure of `(21, 128, 64, 32, 4)` co
    - Tournament selection with size 5 for continued training
    - Elitism with 15-20% for initial training, 20-40% for continued training
 
+## Optimal Evaluation Strategy
+
+### Games Per Evaluation Analysis
+
+The data clearly shows that using 5 games per evaluation outperforms 10 games:
+
+| Games Per Eval | Max Score | Avg Steps | Training Efficiency |
+|----------------|-----------|-----------|---------------------|
+| 5 games        | 49.40     | 1310.60   | Higher              |
+| 10 games       | 32.20     | 654.50    | Lower               |
+
+**Key reasons for this performance difference:**
+
+1. **Beneficial Noise**: 5-game evaluations introduce moderate randomness that prevents premature convergence to suboptimal strategies
+   - Allows discovery of high-risk, high-reward strategies that might be filtered out with more evaluations
+   - Creates genetic diversity that 10-game evaluations might eliminate too early
+
+2. **Computational Efficiency**: With the same time budget:
+   - 5-game evaluations allow the algorithm to process more individuals per generation
+   - More generations can be evaluated, giving evolution more opportunities to discover improvements
+
+3. **Exploration-Exploitation Balance**:
+   - 5 games: Better balance favoring exploration of the solution space
+   - 10 games: Excessive exploitation leads to early convergence and plateauing
+
+4. **Training Progress Pattern**: 
+   - 5-game training shows continuous improvement through generation 170
+   - 10-game training plateaus around generation 145 at a significantly lower performance level
+
+This finding suggests that for Snake AI training, the benefits of increased exploration outweigh the advantages of more accurate fitness assessment.
+
 ## What Doesn't Work Well
 
 1. **Advanced Residual Networks**

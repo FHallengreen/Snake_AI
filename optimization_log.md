@@ -29,6 +29,25 @@ The continued training approach yielded significant improvements:
 - Median score: 53.00 (up from 46.50)
 - Average steps: 1350.70 (up from 1171.70)
 
+### Continued Training Architecture Considerations
+
+We experimented with whether to increase network size during continued training and found:
+
+1. **Maintaining Architecture**: Keeping the same architecture (21, 128, 64, 32, 4) during continued training produced the best results
+   - The continued training process already improved scores by ~6-10% without architecture changes
+   - Max scores improved by 22% (from 59 to 72) with the same architecture
+
+2. **Increasing Network Size Drawbacks**:
+   - Larger networks trained from scratch already showed no improvement over medium networks
+   - Increasing size during continued training risks overfitting to the specific scenarios seen in training
+   - Computational cost increases significantly with larger networks without proportional performance improvement
+   - The original network architecture already has sufficient capacity to represent high-quality strategies
+
+3. **When to Consider Larger Networks**:
+   - Only if clear evidence of underfitting (both training and validation scores are too low)
+   - For significantly more complex game environments (much larger grid sizes)
+   - When combining multiple specialized behaviors that may require higher capacity
+
 ### Key Performance Metrics Comparison
 
 | Metric | Original Model | Enhanced Model | Improvement |

@@ -3,6 +3,7 @@ import pickle
 import argparse
 import time
 import multiprocessing
+import os
 from functools import partial
 from snake import SnakeGame
 from ga_models.ga_simple import SimpleModel
@@ -27,18 +28,18 @@ def create_population_from_model(base_model, pop_size, mutation_strength=0.1):
     
     return population
 
-def continue_training(model_file='experiment_data/best_model.pkl', 
-                     pop_size=200, mut_rate=0.02, generations=150, 
-                     games=7, output_file='enhanced_model.pkl'):
+def continue_training(model_file='experiment_data/best_ai/best_model.pkl', 
+                     pop_size=150, mut_rate=0.032, generations=50,
+                     games=5, output_file='experiment_data/best_ai/enhanced_model.pkl'):
     """
-    Continue training from an existing model with optimized parameters based on empirical results.
+    Continue training from an existing model with optimized parameters based on evaluation results.
     
     Args:
         model_file: Path to the model file to continue training from
-        pop_size: Population size (180 found to be optimal for continued training)
-        mut_rate: Mutation rate (0.028 - slightly lower than initial training but higher than previous)
-        generations: Maximum generations (150 is sufficient based on performance plateau analysis)
-        games: Number of games for evaluation (7 provides more reliable fitness assessment)
+        pop_size: Population size (150 found to be optimal based on evaluation data)
+        mut_rate: Mutation rate (0.032 - optimal mutation rate)
+        generations: Maximum generations 
+        games: Number of games for evaluation (5 provides better exploration/exploitation balance)
         output_file: Output file for the enhanced model
     """
     print("=" * 60)
@@ -137,7 +138,10 @@ def continue_training(model_file='experiment_data/best_model.pkl',
                     'games': games,
                     'source_model': model_file
                 }
-                with open(f"intermediate_{output_file}", 'wb') as f:
+                # Get directory from output_file path
+                output_dir = os.path.dirname(output_file)
+                os.makedirs(output_dir, exist_ok=True)
+                with open(f"{output_dir}/intermediate_{os.path.basename(output_file)}", 'wb') as f:
                     pickle.dump(intermediate_model_data, f)
         else:
             stagnation_counter += 1
@@ -219,17 +223,17 @@ def continue_training(model_file='experiment_data/best_model.pkl',
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Continue training from an existing model")
-    parser.add_argument('--model', type=str, default='experiment_data/best_model.pkl',
+    parser.add_argument('--model', type=str, default='experiment_data/best_ai/best_model.pkl',
                       help="Path to the model file to continue training from")
-    parser.add_argument('--pop-size', type=int, default=180,
+    parser.add_argument('--pop-size', type=int, default=150,
                       help="Population size for continued training")
-    parser.add_argument('--mut-rate', type=float, default=0.028,
+    parser.add_argument('--mut-rate', type=float, default=0.033,
                       help="Base mutation rate")
-    parser.add_argument('--generations', type=int, default=150,
+    parser.add_argument('--generations', type=int, default=170,
                       help="Maximum number of generations to run")
     parser.add_argument('--games', type=int, default=7, 
                       help="Number of games to evaluate each individual")
-    parser.add_argument('--output', type=str, default='enhanced_model.pkl',
+    parser.add_argument('--output', type=str, default='experiment_data/best_ai/enhanced_model.pkl',
                       help="Output file for the enhanced model")
     
     args = parser.parse_args()

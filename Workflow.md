@@ -20,28 +20,52 @@ python experiment_manager.py
 
 Select option 1 from the menu to "Setup experiment (create directory structure)".
 
-## 2. AI Model Training
+## 2. AI Model Training (COMPLETED)
 
-### 2.1. Train Multiple GA Models
-Train multiple genetic algorithm models with different hyperparameters:
+### 2.1. Train Multiple GA Models ✓
+We've trained multiple genetic algorithm models with different hyperparameters:
 
-1. Run the experiment manager: `python experiment_manager.py`
-2. Select option 2: "Prepare GA models"
-3. When prompted, specify how many models to train (recommended: 3-5)
-4. Wait for training to complete (may take 30+ minutes depending on your hardware)
+```bash
+python experiment_manager.py
+```
 
-This will create multiple models with different hyperparameter configurations.
+Selected option 2 and chosen "y" for advanced training with these parameters:
+- Population sizes: 150
+- Mutation rates: 0.032-0.035
+- Games per evaluation: 5
+- Neural network: (21, 128, 64, 32, 4)
 
-### 2.2. Select Best AI Model
-Evaluate and select the best performing model:
+### 2.2. Select Best AI Model ✓
+We've evaluated and selected the best model:
 
-1. Run the experiment manager: `python experiment_manager.py`
-2. Select option 3: "Select best model"
-3. Wait for evaluation to complete
+```bash
+python experiment_manager.py
+```
 
-The system will automatically evaluate each model across multiple games and select the best one for the final experiment.
+Selected option 3, which:
+- Ran 10 evaluation games for each model
+- Selected the model with highest average score (46.80)
+- Copied the best model to experiment_data/best_model.pkl
 
-## 3. Human Data Collection
+### 2.3. Continue Training from Best Model ✓
+We've performed continued training:
+
+```bash
+python continue_training.py --pop-size 150 --mut-rate 0.032 --games 5 --generations 150
+```
+
+This yielded:
+- Improved training score: 60.14 (from generation 88)
+- Better maximum game performance
+- Multiple enhanced models that were evaluated
+
+### 2.4. Final Model Selection ✓
+We've conducted final validation:
+- Evaluated all enhanced models with 10 games each
+- Selected enhanced_model_3.pkl as the best (score 42.90)
+- Concluded that performance has effectively plateaued
+
+## 3. Human Data Collection (NEXT STEP)
 
 ### 3.1. Recruit Participants
 Recruit 8-12 human participants with varying levels of gaming experience:
@@ -103,90 +127,65 @@ Review the generated analysis in the `experiment_data/results/` directory:
    - Learning curves
    - Decision patterns
 
-## 5. Generate Paper
+## 5. Paper Generation
 
-### 5.1. Configure Paper Parameters
-
-Edit the paper generator configuration if needed:
-
-1. Open `paper_generator.py`
-2. Review and adjust parameters like paper title, author names, and sections
+### 5.1. Document Statistical Findings
+Based on the comparative analysis, document:
+- Whether AI outperforms humans (with statistical significance)
+- How AI performance relates to human experience levels
+- Differences in gameplay strategies and patterns
+- Any identified limitations in the AI approach
 
 ### 5.2. Generate Research Paper
+Create a comprehensive research paper with:
+- Abstract summarizing the findings
+- Introduction establishing the research context
+- Methods section detailing both AI and human data collection
+- Results presenting quantitative comparisons
+- Discussion interpreting the findings
+- Conclusion summarizing the research contribution
 
-Run the paper generator to create a draft of your research paper:
-
-```bash
-python paper_generator.py
-```
-
-This will create a LaTeX document and corresponding PDF in the results directory.
-
-### 5.3. Review and Finalize Paper
-
-1. Review the generated paper
-2. Add any additional insights or interpretations
-3. Edit sections as needed
-4. Regenerate the paper with your changes
+### 5.3. Visual Documentation
+Include visualizations demonstrating:
+- Performance distributions for AI vs humans
+- Learning curves for both AI training and humans across multiple sessions
+- Strategy comparisons (heatmaps, path efficiency, time-to-decision)
 
 ## 6. Extended Analysis (Optional)
 
 ### 6.1. Strategy Analysis
-Run the strategy analyzer to examine decision-making patterns:
+For deeper insights, analyze specific gameplay differences:
+- How AI and humans handle "trapped" scenarios
+- Food collection efficiency (steps per food item)
+- Long-term planning vs. reactive decision making
+- Different failure modes between AI and humans
 
-```bash
-python strategy_analyzer.py
-```
-
-### 6.2. Performance Plotting
-Generate additional custom plots:
-
-```bash
-python plot_results.py
-```
+### 6.2. Performance Predictions
+If data permits, build predictive models of:
+- Human performance based on experience level
+- When and why humans outperform the AI (or vice versa)
+- How much training human players would need to match the AI
 
 ## 7. Project Completion
 
-### 7.1. Final Check
-Ensure all components of the project are complete:
-- AI models trained and evaluated
-- Human data collected (minimum 30 games)
-- Comparison analysis completed
-- Paper generated and reviewed
+### 7.1. Final Documentation
+Ensure all aspects are documented:
+- Training methodology and parameters
+- Neural network architecture details
+- Human data collection methodology
+- Statistical analysis procedures
+- Conclusions and implications
 
-### 7.2. Backup Data
-Create a backup of your experiment data:
+### 7.2. Data Preservation
+Archive all project data:
+- Trained models (best and enhanced versions)
+- Raw human performance data
+- Analysis scripts and results
+- Generated visualizations
 
-```bash
-cp -r experiment_data/ experiment_data_backup_$(date +%Y%m%d)/
-```
-
-### 7.3. Document Issues and Limitations
-Add a section to your paper or create a separate document noting:
-- Any limitations in your methodology
-- Potential biases in data collection
-- Ideas for future improvements
-
-## Troubleshooting
-
-### Common Issues
-
-#### Model Training Errors
-If you encounter errors during model training:
-1. Check that all dependencies are installed
-2. Verify that the GA parameters are within reasonable ranges
-3. Try reducing the population size or number of generations
-
-#### Human Data Collection Issues
-If the human game interface is not working properly:
-1. Verify pygame is installed correctly
-2. Check that the screen resolution is compatible
-3. Try running in a window instead of fullscreen
-
-#### Analysis Errors
-If you encounter errors during analysis:
-1. Verify that sufficient data has been collected
-2. Check that the best model file exists
-3. Ensure all data files are in the expected format
-
-For any persistent issues, check the project documentation or seek assistance.
+### 7.3. Future Directions
+Identify promising avenues for future research:
+- Alternative neural network architectures
+- Different training approaches
+- More complex game environments
+- Transfer learning to similar games
