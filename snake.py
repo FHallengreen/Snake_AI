@@ -18,7 +18,7 @@ class SnakeGame:
         self.snake = Snake(game=self)
         self.food = Food(game=self)
 
-    def run(self, model=None, max_steps=1000, display=False, record_data=False, 
+    def run(self, model=None, max_steps=1000, display=True, record_data=False, 
              moves=None, food_positions=None, snake_positions=None, danger_states=None):
         """
         Run the snake game
@@ -37,6 +37,11 @@ class SnakeGame:
             tuple: (score, steps)
         """
         self.reset()
+        
+        # When used with HumanController, reset its first_update flag
+        if hasattr(self.controller, 'first_update'):
+            self.controller.first_update = True
+            
         if model is not None:
             from ga_controller import GAController
             self.controller = GAController(self, display=display, model=model)

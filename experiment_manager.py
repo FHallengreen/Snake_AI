@@ -317,9 +317,16 @@ class ExperimentManager:
                 best_model_path = self.select_best_model()
                 if not best_model_path:
                     return
-                
+        
+        # Ask about filtering potentially unfair human games
+        filter_unfair = input("Filter out potentially unfair human games with scores ≤ 1? (y/n): ").lower().startswith('y')
+        
         # Run performance analysis
-        analyzer = PerformanceAnalyzer(ai_model_file=best_model_path)
+        analyzer = PerformanceAnalyzer(
+            ai_model_file=best_model_path,
+            ai_eval_games=self.config['ai_games_per_evaluation'],
+            filter_scores=filter_unfair
+        )
         report = analyzer.generate_report()
         
         if report:
@@ -342,6 +349,10 @@ class ExperimentManager:
         viz_dir = os.path.join(self.results_dir, 'visualizations')
         if not os.path.exists(viz_dir):
             os.makedirs(viz_dir)
+        
+        # Use non-interactive backend to prevent issues in terminal environments
+        import matplotlib
+        matplotlib.use('Agg')
             
         # 1. Experience level vs. performance (boxplot)
         from human_performance import HumanPerformanceTracker
@@ -366,6 +377,7 @@ class ExperimentManager:
             experience_levels = sorted(df['experience'].unique())
             
             boxplot_data = [df_grouped.get_group(exp)['score'] for exp in experience_levels]
+            # Fix deprecated 'labels' parameter in newer matplotlib versions
             plt.boxplot(boxplot_data, labels=[f"Level {exp}" for exp in experience_levels])
             
             # Add AI performance reference line
@@ -378,7 +390,10 @@ class ExperimentManager:
             plt.title('Score Distribution by Experience Level')
             plt.legend()
             
-            plt.savefig(os.path.join(viz_dir, 'experience_vs_performance.png'))
+            # Save figure
+            boxplot_file = os.path.join(viz_dir, 'experience_vs_performance.png')
+            plt.savefig(boxplot_file)
+            print(f"Experience vs performance plot saved to: {boxplot_file}")
             
         # 2. Learning curve for humans (experience vs. time)
         sessions_by_player = {}
@@ -394,23 +409,116 @@ class ExperimentManager:
             
         # Plot learning curves for players with multiple sessions
         plt.figure(figsize=(12, 8))
+        has_multiple_sessions = False
         for player_id, sessions in sessions_by_player.items():
             if len(sessions) > 1:
+                has_multiple_sessions = True
                 player_name = tracker.results['players'][player_id]['name']
                 avg_scores = [np.mean(session['scores']) for session in sessions]
                 plt.plot(range(1, len(avg_scores) + 1), avg_scores, 
                         marker='o', label=f"{player_name}")
-                
-        plt.xlabel('Session Number')
-        plt.ylabel('Average Score')
-        plt.title('Human Learning Curves')
-        plt.grid(True, linestyle='--', alpha=0.7)
-        plt.legend()
         
-        plt.savefig(os.path.join(viz_dir, 'human_learning_curves.png'))
+        if has_multiple_sessions:
+            plt.xlabel('Session Number')
+            plt.ylabel('Average Score')
+            plt.title('Human Learning Curves')
+            plt.grid(True, linestyle='--', alpha=0.7)
+            plt.legend()
             
-        print(f"Advanced visualizations saved to {viz_dir}")
-    
+            # Save figure
+            learning_curve_file = os.path.join(viz_dir, 'human_learning_curves.png')
+            plt.savefig(learning_curve_file)
+            print(f"Learning curves plot saved to: {learning_curve_file}")
+            
+        # 3. Score comparison histogram
+        plt.figure(figsize=(12, 6))
+        
+        # Get AI and human scores
+        ai_scores = report['ai_performance']['scores']
+        human_scores = report['human_performance']['scores']
+        
+        # Create histogram with semi-transparent bars
+        plt.hist(ai_scores, bins=15, alpha=0.7, label='AI Scores', color='skyblue')
+        plt.hist(human_scores, bins=15, alpha=0.7, label='Human Scores', color='sandybrown')
+        
+        # Add vertical lines for averages
+        plt.axvline(x=report['ai_performance']['avg_score'], color='blue', linestyle='--', 
+                   label=f"AI Avg: {report['ai_performance']['avg_score']:.2f}")
+        plt.axvline(x=report['human_performance']['avg_score'], color='red', linestyle='--',
+                   label=f"Human Avg: {report['human_performance']['avg_score']:.2f}")
+        
+        plt.xlabel('Score')
+        plt.ylabel('Frequency')
+        plt.title('Score Distribution: AI vs Human')
+        plt.legend()
+        plt.grid(True, linestyle='--', alpha=0.5)
+        
+        # Save figure
+        histogram_file = os.path.join(viz_dir, 'score_distribution.png')
+        plt.savefig(histogram_file)
+        print(f"Score distribution histogram saved to: {histogram_file}")
+        
+        # 4. Multi-panel performance visualization (our missing visualization)
+        self._generate_multi_panel_visualization(report, viz_dir)
+            
+        print(f"All visualizations saved to {viz_dir}")
+
+    def _generate_multi_panel_visualization(self, report, viz_dir):
+        """
+        Generate a four-panel visualization comparing AI and human performance.
+        
+        Args:
+            report: Performance report data
+            viz_dir: Directory to save visualization
+        """
+        # Extract data
+        ai_scores = report['ai_performance']['scores']
+        human_scores = report['human_performance']['scores']
+        ai_steps = report['ai_performance']['steps']
+        human_steps = report['human_performance']['steps']
+        
+        # Create a figure with 4 subplots
+        fig, axs = plt.subplots(2, 2, figsize=(12, 10))
+        plt.subplots_adjust(hspace=0.3, wspace=0.3)
+        
+        # Panel 1: Score Distribution (upper left)
+        axs[0, 0].hist(ai_scores, bins=15, alpha=0.7, label='AI', color='skyblue')
+        axs[0, 0].hist(human_scores, bins=15, alpha=0.7, label='Human', color='sandybrown')
+        axs[0, 0].set_xlabel('Score')
+        axs[0, 0].set_ylabel('Frequency')
+        axs[0, 0].set_title('Score Distribution')
+        axs[0, 0].legend()
+        
+        # Panel 2: Average Score Comparison with std dev (upper right)
+        labels = ['AI', 'Human']
+        means = [np.mean(ai_scores), np.mean(human_scores)]
+        stds = [np.std(ai_scores), np.std(human_scores)]
+        
+        axs[0, 1].bar(labels, means, yerr=stds, capsize=10, color=['skyblue', 'sandybrown'])
+        axs[0, 1].set_ylabel('Average Score')
+        axs[0, 1].set_title('Average Score Comparison')
+        
+        # Panel 3: Steps Distribution (lower left)
+        axs[1, 0].hist(ai_steps, bins=15, alpha=0.7, label='AI', color='skyblue')
+        axs[1, 0].hist(human_steps, bins=15, alpha=0.7, label='Human', color='sandybrown')
+        axs[1, 0].set_xlabel('Steps')
+        axs[1, 0].set_ylabel('Frequency')
+        axs[1, 0].set_title('Steps Distribution')
+        axs[1, 0].legend()
+        
+        # Panel 4: Score vs Steps scatter (lower right)
+        axs[1, 1].scatter(ai_steps, ai_scores, alpha=0.7, label='AI', color='skyblue')
+        axs[1, 1].scatter(human_steps, human_scores, alpha=0.7, label='Human', color='sandybrown')
+        axs[1, 1].set_xlabel('Steps')
+        axs[1, 1].set_ylabel('Score')
+        axs[1, 1].set_title('Score vs. Steps')
+        axs[1, 1].legend()
+        
+        # Save the figure
+        output_file = os.path.join(viz_dir, 'performance_comparison_panels.png')
+        plt.tight_layout()
+        plt.savefig(output_file, dpi=300)
+        print(f"Multi-panel comparison visualization saved to: {output_file}")
 
 def main():
     """
@@ -457,10 +565,9 @@ def main():
             
         elif choice == '5':
             manager.run_final_experiment()
-        elif choice == '5':
-            manager.run_final_experiment()
         elif choice == '6':
             print("Exiting Experiment Manager.")
             break
+
 if __name__ == "__main__":
     main()

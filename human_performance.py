@@ -69,7 +69,8 @@ class HumanPerformanceTracker:
         
         print(f"\nStarting session for {player_name}")
         print(f"Play {num_games} games using arrow keys to control the snake.")
-        print("Press any key to start...")
+        print("Each game will start with a 3-second countdown to give you time to react.")
+        print("Press Enter to begin...")
         input()
         
         game = SnakeGame(xsize=20, ysize=20)
