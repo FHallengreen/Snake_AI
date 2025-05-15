@@ -37,7 +37,7 @@ class ExperimentManager:
                 
         # Experiment configuration
         self.config = {
-            'ai_games_per_evaluation': 30,
+            'ai_games_per_evaluation': 34,
             'human_games_required': 30,
             'game_parameters': {
                 'grid_size': 20,

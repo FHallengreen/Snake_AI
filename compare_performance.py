@@ -19,7 +19,7 @@ class PerformanceAnalyzer:
     
     def __init__(self, ai_model_file='experiment_data/best_ai/enhanced_model_final.pkl', 
                  human_data_file='human_results.json',
-                 ai_eval_games=30,
+                 ai_eval_games=None,
                  filter_scores=False):
         """
         Initialize the performance analyzer.
@@ -27,12 +27,24 @@ class PerformanceAnalyzer:
         Args:
             ai_model_file: Path to the AI model file to evaluate
             human_data_file: Path to the human results file
-            ai_eval_games: Number of AI games to evaluate (default 30)
+            ai_eval_games: Number of AI games to evaluate (overrides config if provided)
             filter_scores: Whether to filter out human games with very low scores that might be unfair
         """
         self.ai_model_file = ai_model_file
         self.human_data_file = human_data_file
-        self.ai_eval_games = ai_eval_games
+        
+        # Load experiment configuration to ensure consistent game count
+        config_path = 'experiment_data/experiment_config.json'
+        try:
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+                # Use config value, but allow override through parameter
+                self.ai_eval_games = ai_eval_games if ai_eval_games is not None else config.get('ai_games_per_evaluation', 34)
+        except (FileNotFoundError, json.JSONDecodeError):
+            # Fallback to parameter value or default if config file not found
+            self.ai_eval_games = ai_eval_games if ai_eval_games is not None else 34
+            print(f"Warning: Could not load experiment config. Using {self.ai_eval_games} AI evaluation games.")
+        
         self.filter_scores = filter_scores
         
         # Load human data
@@ -55,7 +67,7 @@ class PerformanceAnalyzer:
         print(f"Running {self.ai_eval_games} AI evaluation games...")
         avg_score, scores = run_best_model(
             model_file=self.ai_model_file,
-            num_games=self.ai_eval_games,
+            num_games=self.ai_eval_games,  # Use the value from config
             max_steps=2000,
             display=False,
             save_stats=True,
