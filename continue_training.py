@@ -7,11 +7,12 @@ import os
 from functools import partial
 from snake import SnakeGame
 from ga_models.ga_simple import SimpleModel
-from ga_train import evaluate_individual
+from ga_train import evaluate_individual  # Reuse the fitness function
 
 def create_population_from_model(base_model, pop_size, mutation_strength=0.1):
     """
     Create a population centered around a base model with various mutation levels.
+    This is a specialized form of GA Initialization from an existing model.
     """
     population = [base_model]  # Include the original model
     
@@ -29,18 +30,20 @@ def create_population_from_model(base_model, pop_size, mutation_strength=0.1):
     return population
 
 def continue_training(model_file='experiment_data/best_ai/best_model.pkl', 
-                     pop_size=150, mut_rate=0.032, generations=50,
+                     pop_size=150, mut_rate=0.03, generations=50,
                      games=5, output_file='experiment_data/best_ai/enhanced_model.pkl'):
     """
-    Continue training from an existing model with optimized parameters based on evaluation results.
+    Continue training from an existing model with optimized parameters.
     
-    Args:
-        model_file: Path to the model file to continue training from
-        pop_size: Population size (150 found to be optimal based on evaluation data)
-        mut_rate: Mutation rate (0.032 - optimal mutation rate)
-        generations: Maximum generations 
-        games: Number of games for evaluation (5 provides better exploration/exploitation balance)
-        output_file: Output file for the enhanced model
+    This function follows the same GA structure as run_ga_experiment but starts
+    from a pre-trained model:
+    
+    1. INITIALIZATION: Load model and create population around it
+    2. EVALUATION: Calculate fitness for each individual
+    3. SELECTION: Tournament selection and elitism
+    4. CROSSOVER & MUTATION: Create offspring with genetic operators
+    5. REPLACEMENT: Form new generation
+    6. TERMINATION: Stop after max generations or when progress plateaus
     """
     print("=" * 60)
     print(f"CONTINUING TRAINING FROM {model_file}")
@@ -68,9 +71,9 @@ def continue_training(model_file='experiment_data/best_ai/best_model.pkl',
         base_model = SimpleModel(dims=tuple(dims))
         base_model.DNA = dna
         
+        # GA STEP 1: INITIALIZATION - Load existing model and create population
         # Create population with advanced initialization
         print(f"Creating population of size {pop_size} based on loaded model...")
-        # Adjust mutation strength based on empirical analysis
         population = create_population_from_model(base_model, pop_size, mutation_strength=0.12)
     else:
         print("Error: Could not extract valid DNA from the model file.")
@@ -97,8 +100,9 @@ def continue_training(model_file='experiment_data/best_ai/best_model.pkl',
     # Training start time
     start_time = time.time()
     
-    # Run the genetic algorithm
+    # GA MAIN LOOP
     for gen in range(generations):
+        # GA STEP 2: FITNESS EVALUATION
         # Evaluate the population
         with multiprocessing.Pool(processes=num_processes) as pool:
             eval_func = partial(evaluate_individual, games=games)
@@ -148,11 +152,12 @@ def continue_training(model_file='experiment_data/best_ai/best_model.pkl',
             
         print(f"Generation {gen + 1}: Avg Score = {stats['avg_score'][-1]:.2f}, Max Score = {best_score:.2f}")
         
+        # GA STEP 6: TERMINATION - Check for early stopping
         # Check for early stopping
         if stagnation_counter >= patience:
             print(f"Early stopping: No improvement for {patience} generations")
             break
-            
+        
         # Dynamic mutation rates - adjusted based on empirical results
         if gen < generations * 0.15:  # First 15%
             current_mut_rate = mut_rate * 0.9  # Start higher for continued training
@@ -160,7 +165,8 @@ def continue_training(model_file='experiment_data/best_ai/best_model.pkl',
             current_mut_rate = mut_rate * 0.35  # Very fine tuning
         else:  # Middle 55%
             current_mut_rate = mut_rate * 0.6  # Balanced refinement
-            
+        
+        # GA STEP 3: SELECTION with ELITISM
         # Adaptive elitism - keep more of the good models as training progresses
         elite_percent = 0.2 + min(0.3, gen / generations * 0.2)  # 20% to 40% (higher than normal)
         elite_count = max(1, int(pop_size * elite_percent))

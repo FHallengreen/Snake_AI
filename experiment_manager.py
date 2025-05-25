@@ -321,9 +321,13 @@ class ExperimentManager:
         # Ask about filtering potentially unfair human games
         filter_unfair = input("Filter out potentially unfair human games with scores ≤ 1? (y/n): ").lower().startswith('y')
         
+        # Human data path
+        human_data_path = os.path.join(self.human_data_dir, 'human_results.json')
+        
         # Run performance analysis
         analyzer = PerformanceAnalyzer(
             ai_model_file=best_model_path,
+            human_data_file=human_data_path,  # Use the correct path from our directory structure
             ai_eval_games=self.config['ai_games_per_evaluation'],
             filter_scores=filter_unfair
         )
@@ -465,7 +469,7 @@ class ExperimentManager:
 
     def _generate_multi_panel_visualization(self, report, viz_dir):
         """
-        Generate a four-panel visualization comparing AI and human performance.
+        Generate a visualization comparing AI and human performance.
         
         Args:
             report: Performance report data
@@ -477,48 +481,23 @@ class ExperimentManager:
         ai_steps = report['ai_performance']['steps']
         human_steps = report['human_performance']['steps']
         
-        # Create a figure with 4 subplots
-        fig, axs = plt.subplots(2, 2, figsize=(12, 10))
-        plt.subplots_adjust(hspace=0.3, wspace=0.3)
+        # Create a single figure for the Steps vs Score scatter plot
+        plt.figure(figsize=(10, 8))
         
-        # Panel 1: Score Distribution (upper left)
-        axs[0, 0].hist(ai_scores, bins=15, alpha=0.7, label='AI', color='skyblue')
-        axs[0, 0].hist(human_scores, bins=15, alpha=0.7, label='Human', color='sandybrown')
-        axs[0, 0].set_xlabel('Score')
-        axs[0, 0].set_ylabel('Frequency')
-        axs[0, 0].set_title('Score Distribution')
-        axs[0, 0].legend()
-        
-        # Panel 2: Average Score Comparison with std dev (upper right)
-        labels = ['AI', 'Human']
-        means = [np.mean(ai_scores), np.mean(human_scores)]
-        stds = [np.std(ai_scores), np.std(human_scores)]
-        
-        axs[0, 1].bar(labels, means, yerr=stds, capsize=10, color=['skyblue', 'sandybrown'])
-        axs[0, 1].set_ylabel('Average Score')
-        axs[0, 1].set_title('Average Score Comparison')
-        
-        # Panel 3: Steps Distribution (lower left)
-        axs[1, 0].hist(ai_steps, bins=15, alpha=0.7, label='AI', color='skyblue')
-        axs[1, 0].hist(human_steps, bins=15, alpha=0.7, label='Human', color='sandybrown')
-        axs[1, 0].set_xlabel('Steps')
-        axs[1, 0].set_ylabel('Frequency')
-        axs[1, 0].set_title('Steps Distribution')
-        axs[1, 0].legend()
-        
-        # Panel 4: Score vs Steps scatter (lower right)
-        axs[1, 1].scatter(ai_steps, ai_scores, alpha=0.7, label='AI', color='skyblue')
-        axs[1, 1].scatter(human_steps, human_scores, alpha=0.7, label='Human', color='sandybrown')
-        axs[1, 1].set_xlabel('Steps')
-        axs[1, 1].set_ylabel('Score')
-        axs[1, 1].set_title('Score vs. Steps')
-        axs[1, 1].legend()
+        # Steps vs Score scatter plot
+        plt.scatter(ai_steps, ai_scores, alpha=0.7, label='AI', color='skyblue')
+        plt.scatter(human_steps, human_scores, alpha=0.7, label='Human', color='sandybrown')
+        plt.xlabel('Steps', fontsize=12)
+        plt.ylabel('Score', fontsize=12)
+        plt.title('Steps vs Score Comparison', fontsize=14)
+        plt.grid(True, alpha=0.3)
+        plt.legend(fontsize=12)
         
         # Save the figure
-        output_file = os.path.join(viz_dir, 'performance_comparison_panels.png')
+        output_file = os.path.join(viz_dir, 'steps_vs_score_comparison.png')
         plt.tight_layout()
         plt.savefig(output_file, dpi=300)
-        print(f"Multi-panel comparison visualization saved to: {output_file}")
+        print(f"Steps vs Score comparison saved to: {output_file}")
 
 def main():
     """

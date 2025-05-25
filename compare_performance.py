@@ -18,7 +18,7 @@ class PerformanceAnalyzer:
     """Analyzes and compares AI vs human performance in the Snake game."""
     
     def __init__(self, ai_model_file='experiment_data/best_ai/enhanced_model_final.pkl', 
-                 human_data_file='human_results.json',
+                 human_data_file='experiment_data/human_data/human_results.json',
                  ai_eval_games=None,
                  filter_scores=False):
         """
@@ -48,12 +48,27 @@ class PerformanceAnalyzer:
         self.filter_scores = filter_scores
         
         # Load human data
+        self.human_data = self._load_human_data()
+    
+    def _load_human_data(self):
+        """Load human data from file, with better error handling."""
         try:
-            with open(human_data_file, 'r') as f:
-                self.human_data = json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError):
-            print(f"Error: Could not load human data from {human_data_file}")
-            self.human_data = None
+            print(f"Attempting to load human data from: {self.human_data_file}")
+            with open(self.human_data_file, 'r') as f:
+                human_data = json.load(f)
+                # Basic validation to ensure it's in the expected format
+                if 'sessions' not in human_data:
+                    print(f"Error: The human data file doesn't contain expected 'sessions' key")
+                    return None
+                print(f"Successfully loaded human data with {len(human_data['sessions'])} sessions")
+                return human_data
+        except FileNotFoundError:
+            print(f"Error: Human data file not found at {self.human_data_file}")
+        except json.JSONDecodeError:
+            print(f"Error: Human data file contains invalid JSON")
+        except Exception as e:
+            print(f"Error loading human data: {str(e)}")
+        return None
     
     def run_ai_evaluation(self):
         """
@@ -107,6 +122,7 @@ class PerformanceAnalyzer:
             dict: Human performance results
         """
         if not self.human_data:
+            print("No human data available. Please check the path to the human data file.")
             return None
             
         all_scores = []
@@ -131,8 +147,13 @@ class PerformanceAnalyzer:
         if self.filter_scores and len(all_scores) < 10:
             print("Warning: Less than 10 games after filtering. Using all human data instead.")
             # Try again without filtering
-            return self.get_human_performance_internal(filter_scores=False)
+            self.filter_scores = False
+            return self.get_human_performance()
         
+        if not all_scores:
+            print("Error: No valid human scores found in the data.")
+            return None
+            
         return {
             'scores': all_scores,
             'steps': all_steps,
@@ -166,11 +187,6 @@ class PerformanceAnalyzer:
         ai_avg = ai_performance['avg_score']
         human_avg = human_performance['avg_score']
         
-        # T-test for normally distributed data
-        t_stat, p_value_t = stats.ttest_ind(ai_scores, human_scores)
-        
-        # Mann-Whitney U test for non-parametric comparison
-        u_stat, p_value_u = stats.mannwhitneyu(ai_scores, human_scores)
         
         # Comparison result
         is_significant = p_value_t < 0.05
@@ -183,14 +199,6 @@ class PerformanceAnalyzer:
             'comparison': {
                 'ai_avg_score': ai_avg,
                 'human_avg_score': human_avg,
-                't_test': {
-                    'statistic': float(t_stat),
-                    'p_value': float(p_value_t)
-                },
-                'u_test': {
-                    'statistic': float(u_stat),
-                    'p_value': float(p_value_u)
-                },
                 'is_significant': bool(is_significant),
                 'better_performer': better_performer
             },
@@ -216,7 +224,7 @@ class PerformanceAnalyzer:
         
     def generate_multi_panel_visualization(self, ai_performance, human_performance):
         """
-        Generate a four-panel visualization comparing AI and human performance.
+        Generate a visualization comparing AI and human performance.
         
         Args:
             ai_performance: Dictionary with AI performance data
@@ -226,54 +234,29 @@ class PerformanceAnalyzer:
         vis_dir = 'experiment_data/results/visualizations'
         os.makedirs(vis_dir, exist_ok=True)
         
-        # Create a figure with 4 subplots
-        fig, axs = plt.subplots(2, 2, figsize=(12, 10))
-        plt.subplots_adjust(hspace=0.3, wspace=0.3)
-        
         # Extract data
         ai_scores = ai_performance['scores']
         human_scores = human_performance['scores']
         ai_steps = ai_performance['steps']
         human_steps = human_performance['steps']
         
-        # Panel 1: Score Distribution (upper left)
-        axs[0, 0].hist(ai_scores, bins=15, alpha=0.7, label='AI', color='skyblue')
-        axs[0, 0].hist(human_scores, bins=15, alpha=0.7, label='Human', color='sandybrown')
-        axs[0, 0].set_xlabel('Score')
-        axs[0, 0].set_ylabel('Frequency')
-        axs[0, 0].set_title('Score Distribution')
-        axs[0, 0].legend()
+        # Create a single figure for the Steps vs Score scatter plot
+        plt.figure(figsize=(10, 8))
         
-        # Panel 2: Average Score Comparison with std dev (upper right)
-        labels = ['AI', 'Human']
-        means = [np.mean(ai_scores), np.mean(human_scores)]
-        stds = [np.std(ai_scores), np.std(human_scores)]
-        
-        axs[0, 1].bar(labels, means, yerr=stds, capsize=10, color=['skyblue', 'sandybrown'])
-        axs[0, 1].set_ylabel('Average Score')
-        axs[0, 1].set_title('Average Score Comparison')
-        
-        # Panel 3: Steps Distribution (lower left)
-        axs[1, 0].hist(ai_steps, bins=15, alpha=0.7, label='AI', color='skyblue')
-        axs[1, 0].hist(human_steps, bins=15, alpha=0.7, label='Human', color='sandybrown')
-        axs[1, 0].set_xlabel('Steps')
-        axs[1, 0].set_ylabel('Frequency')
-        axs[1, 0].set_title('Steps Distribution')
-        axs[1, 0].legend()
-        
-        # Panel 4: Score vs Steps scatter (lower right)
-        axs[1, 1].scatter(ai_steps, ai_scores, alpha=0.7, label='AI', color='skyblue')
-        axs[1, 1].scatter(human_steps, human_scores, alpha=0.7, label='Human', color='sandybrown')
-        axs[1, 1].set_xlabel('Steps')
-        axs[1, 1].set_ylabel('Score')
-        axs[1, 1].set_title('Score vs. Steps')
-        axs[1, 1].legend()
+        # Steps vs Score scatter plot
+        plt.scatter(ai_steps, ai_scores, alpha=0.7, label='AI', color='skyblue')
+        plt.scatter(human_steps, human_scores, alpha=0.7, label='Human', color='sandybrown')
+        plt.xlabel('Steps', fontsize=12)
+        plt.ylabel('Score', fontsize=12)
+        plt.title('Steps vs Score Comparison', fontsize=14)
+        plt.grid(True, alpha=0.3)
+        plt.legend(fontsize=12)
         
         # Save the figure
-        output_file = os.path.join(vis_dir, 'performance_comparison_panels.png')
+        output_file = os.path.join(vis_dir, 'steps_vs_score_comparison.png')
         plt.tight_layout()
         plt.savefig(output_file, dpi=300)
-        print(f"Multi-panel performance comparison saved to: {output_file}")
+        print(f"Steps vs Score comparison saved to: {output_file}")
 
 
 def main():

@@ -10,6 +10,12 @@ from ga_models.ga_simple import SimpleModel
 
 
 def evaluate_individual(model, games=3):
+    """
+    Fitness function: Evaluate an individual model by playing multiple games
+    and calculating a fitness score based on performance.
+    
+    This is the GA Fitness Evaluation component.
+    """
     game = SnakeGame(xsize=20, ysize=20)
     total_score = 0
     total_steps = 0
@@ -114,6 +120,14 @@ def run_ga_experiment(pop_size, mut_rate, generations=100, games=3, network_arch
     """
     Run a genetic algorithm experiment with the specified parameters.
     
+    This function implements the main GA loop with:
+    - Initialization: Create initial population
+    - Evaluation: Calculate fitness for each individual  
+    - Selection: Tournament selection to choose parents
+    - Crossover & Mutation: Create offspring with genetic operators
+    - Replacement: Form new generation with elitism
+    - Termination: Stop after max generations or when progress plateaus
+    
     Args:
         pop_size: Size of the population
         mut_rate: Base mutation rate
@@ -126,14 +140,13 @@ def run_ga_experiment(pop_size, mut_rate, generations=100, games=3, network_arch
     print(f"Using network architecture: {network_arch}")
     print(f"Model class: {model_class.__name__}")
     
-    # For advanced model, decide whether to use residual connections
-    use_residual = hasattr(model_class, '__name__') and model_class.__name__ == 'AdvancedModel'
-    
-    if use_residual:
+    # GA STEP 1: INITIALIZATION - Create initial population
+    if hasattr(model_class, '__name__') and model_class.__name__ == 'AdvancedModel':
         population = [model_class(dims=network_arch, use_residual=True) for _ in range(pop_size)]
     else:
         population = [model_class(dims=network_arch) for _ in range(pop_size)]
     
+    # Statistics tracking
     stats = {'avg': [], 'max': [], 'avg_score': [], 'avg_steps': []}
     best_model = None
     best_fitness = -float('inf')
@@ -142,20 +155,21 @@ def run_ga_experiment(pop_size, mut_rate, generations=100, games=3, network_arch
     best_gen = 0
     
     # Early stopping parameters
-    patience = 35  # Increased from 30
-    min_delta = 0.005  # More sensitive to small improvements
+    patience = 35
+    min_delta = 0.005
     stagnation_counter = 0
     last_best_fitness = -float('inf')
     
-    # Determine optimal number of processes based on CPU cores
+    # Parallel processing setup
     num_processes = min(multiprocessing.cpu_count(), pop_size)
     print(f"Using {num_processes} processes for parallel evaluation")
     
     # Track time to estimate completion
     start_time = time.time()
     
+    # GA MAIN LOOP - Iterate through generations
     for gen in range(generations):
-        # Parallelize the evaluation of individuals
+        # GA STEP 2: FITNESS EVALUATION - Evaluate each individual
         with multiprocessing.Pool(processes=num_processes) as pool:
             eval_func = partial(evaluate_individual, games=games)
             results = pool.map(eval_func, population)
@@ -167,7 +181,7 @@ def run_ga_experiment(pop_size, mut_rate, generations=100, games=3, network_arch
         stats['avg_steps'].append(np.mean(steps) / games)
         max_fitness = np.max(fitnesses)
         
-        # Check if we have a new best model with meaningful improvement
+        # Track best individual across generations
         if max_fitness > best_fitness:
             improvement = max_fitness - last_best_fitness
             if improvement > min_delta:
@@ -185,12 +199,12 @@ def run_ga_experiment(pop_size, mut_rate, generations=100, games=3, network_arch
             
         print(f"Generation {gen + 1}: Avg Score = {stats['avg_score'][-1]:.2f}, Max Score = {best_score:.2f}")
         
-        # Early stopping check - if no improvement for 'patience' generations, stop training
+        # GA STEP 6: TERMINATION - Check for early stopping
         if stagnation_counter >= patience:
             print(f"Early stopping at generation {gen + 1}: No significant improvement for {patience} generations")
             break
         
-        # Updated dynamic mutation scheduling
+        # Dynamic mutation rate scheduling
         if gen < generations * 0.15:  # First 15% - high exploration
             current_mut_rate = mut_rate * 1.5
         elif gen < generations * 0.4:  # Early phase - moderate exploration
@@ -202,30 +216,35 @@ def run_ga_experiment(pop_size, mut_rate, generations=100, games=3, network_arch
         else:  # Middle phase
             current_mut_rate = mut_rate * 0.8
             
-        # Adaptive elitism - increase as training progresses
-        elite_percent = 0.15 + min(0.2, gen / generations * 0.15)  # 15% to 30%
+        # GA STEP 3: SELECTION with ELITISM - Preserve best individuals
+        elite_percent = 0.15 + min(0.2, gen / generations * 0.15)
         elite_count = max(1, int(pop_size * elite_percent))
         elite_indices = np.argsort(fitnesses)[-elite_count:]
         elites = [population[i] for i in elite_indices]
         
+        # Create offspring
         offspring = []
-        tournament_size = 4  # Increase from 3 to 4
+        tournament_size = 4
         
+        # Generate new individuals to maintain population size
         for _ in range(pop_size - elite_count):
-            # Tournament selection
+            # GA STEP 3: SELECTION - Tournament selection for parents
             tournament_indices = np.random.choice(len(population), tournament_size, replace=False)
             tournament_fitnesses = [fitnesses[i] for i in tournament_indices]
             parent1 = population[tournament_indices[np.argmax(tournament_fitnesses)]]
             
-            # Second parent via tournament
             tournament_indices = np.random.choice(len(population), tournament_size, replace=False)
             tournament_fitnesses = [fitnesses[i] for i in tournament_indices]
             parent2 = population[tournament_indices[np.argmax(tournament_fitnesses)]]
             
+            # GA STEP 4: CROSSOVER - Create child from parents
             child = parent1 + parent2
+            
+            # GA STEP 5: MUTATION - Apply mutation to child
             child.mutate(current_mut_rate)
             offspring.append(child)
         
+        # Form new generation
         population = elites + offspring
     
     return stats, best_model, best_fitness, best_score, best_steps, best_gen

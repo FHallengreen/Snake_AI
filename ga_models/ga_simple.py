@@ -15,7 +15,12 @@ except ImportError:
 
 
 class SimpleModel(GAModel):
+    """
+    Neural network model that can be evolved using genetic algorithms.
+    This class implements the representation, mutation, and crossover components of GA.
+    """
     def __init__(self, *, dims: Tuple[int, ...]):
+        """Initialize the neural network with the given dimensions (GA: Representation)"""
         assert len(dims) >= 2, 'Error: dims must be two or higher.'
         self.dims = dims
         self._DNA = []
@@ -29,6 +34,7 @@ class SimpleModel(GAModel):
                 self._DNA.append(np.random.normal(0, std_dev, (dim, dims[i+1])))
 
     def update(self, obs: Sequence) -> Tuple[int, ...]:
+        """Forward pass through the neural network"""
         x = np.array(obs, dtype=np.float32)  # Ensure float32 for better performance
         for i, layer in enumerate(self._DNA):
             layer_np = np.array(layer, dtype=np.float32)
@@ -43,9 +49,18 @@ class SimpleModel(GAModel):
         return softmax(x)
 
     def action(self, obs: Sequence):
+        """Select an action based on the observation"""
         return self.update(obs).argmax()
 
     def mutate(self, mutation_rate) -> None:
+        """
+        Modify the neural network weights randomly (GA: Mutation).
+        
+        This method applies three types of mutations:
+        1. Small random adjustments to weights
+        2. Stronger mutations with layer-specific scaling
+        3. Random neuron resets
+        """
         for i, layer in enumerate(self._DNA):
             # Base mutation rate logic (from existing code)
             mask = np.random.random(layer.shape) < mutation_rate
@@ -72,7 +87,14 @@ class SimpleModel(GAModel):
                 layer[reset_mask] = np.random.normal(0, std_dev, size=np.sum(reset_mask))
 
     def __add__(self, other):
-        # Improved crossover with BLX-alpha and adaptive scaling
+        """
+        Combine two neural networks to create a new one (GA: Crossover).
+        
+        This method implements BLX-alpha crossover with adaptive scaling:
+        1. Interpolates between parents with weighted contributions
+        2. Adds exploration beyond the parents' values
+        3. Applies different exploration factors based on layer depth
+        """
         baby_DNA = []
         alpha = 0.3
         
@@ -107,8 +129,10 @@ class SimpleModel(GAModel):
 
     @property
     def DNA(self):
+        """Access the neural network weights (GA: Representation)"""
         return self._DNA
 
     @DNA.setter
     def DNA(self, value):
+        """Set the neural network weights (GA: Representation)"""
         self._DNA = value

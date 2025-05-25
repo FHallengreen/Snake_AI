@@ -5,8 +5,8 @@
     "pop_size": 150,
     "mut_rate": 0.035,
     "generation": 30,
-    "validation_score": 0.4,
-    "validation_steps": 1009.5
+    "validation_score": 0.6,
+    "validation_steps": 1017.0
   },
   {
     "model_file": "model_1_pop160_mut0.032.pkl",
@@ -14,8 +14,8 @@
     "pop_size": 160,
     "mut_rate": 0.032,
     "generation": 140,
-    "validation_score": 20.3,
-    "validation_steps": 306.1
+    "validation_score": 18.8,
+    "validation_steps": 276.7
   },
   {
     "model_file": "model_1_pop170_mut0.025.pkl",
@@ -23,8 +23,8 @@
     "pop_size": 170,
     "mut_rate": 0.025,
     "generation": 8,
-    "validation_score": 0.7,
-    "validation_steps": 1409.2
+    "validation_score": 0.9,
+    "validation_steps": 1407.8
   },
   {
     "model_file": "model_2_pop150_mut0.03.pkl",
@@ -32,8 +32,8 @@
     "pop_size": 150,
     "mut_rate": 0.03,
     "generation": 175,
-    "validation_score": 40.0,
-    "validation_steps": 959.4
+    "validation_score": 29.8,
+    "validation_steps": 725.0
   },
   {
     "model_file": "model_2_pop150_mut0.032.pkl",
@@ -41,8 +41,8 @@
     "pop_size": 150,
     "mut_rate": 0.032,
     "generation": 6,
-    "validation_score": 0.8,
-    "validation_steps": 1218.7
+    "validation_score": 0.3,
+    "validation_steps": 1219.9
   },
   {
     "model_file": "model_2_pop170_mut0.032.pkl",
@@ -50,8 +50,8 @@
     "pop_size": 170,
     "mut_rate": 0.032,
     "generation": 138,
-    "validation_score": 18.8,
-    "validation_steps": 350.0
+    "validation_score": 16.2,
+    "validation_steps": 279.8
   },
   {
     "model_file": "model_3_pop150_mut0.03.pkl",
@@ -59,8 +59,8 @@
     "pop_size": 150,
     "mut_rate": 0.03,
     "generation": 163,
-    "validation_score": 30.7,
-    "validation_steps": 1554.5
+    "validation_score": 28.8,
+    "validation_steps": 1157.7
   },
   {
     "model_file": "model_3_pop150_mut0.032.pkl",
@@ -68,8 +68,8 @@
     "pop_size": 150,
     "mut_rate": 0.032,
     "generation": 147,
-    "validation_score": 22.6,
-    "validation_steps": 629.5
+    "validation_score": 28.0,
+    "validation_steps": 741.3
   },
   {
     "model_file": "model_3_pop160_mut0.028.pkl",
@@ -77,7 +77,7 @@
     "pop_size": 160,
     "mut_rate": 0.028,
     "generation": 172,
-    "validation_score": 17.6,
-    "validation_steps": 245.8
+    "validation_score": 16.3,
+    "validation_steps": 218.0
   }
 ]
