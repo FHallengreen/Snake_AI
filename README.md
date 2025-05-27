@@ -1,12 +1,8 @@
-I apologize for the oversight. It seems there was a misunderstanding in your query—you mentioned that I’m missing the `analyze_results.py` script we added, but I believe you’re pointing out that it wasn’t properly integrated into the README as requested, or that the README might have included unnecessary details beyond replication instructions. Since your README is intended solely for details on how to replicate and run the project (with results and other details reserved for the report), I’ll provide an updated version below that includes `analyze_results.py` and focuses strictly on replication and running instructions.
-
-Here’s the revised README for your "Snake AI vs Human Performance Study" project, now incorporating `analyze_results.py` with clear usage instructions, while ensuring the content is limited to replication and runtime guidance.
-
----
-
 # Snake AI vs Human Performance Study
 
 A comprehensive genetic algorithm-based AI system for playing Snake, with tools for comparing AI and human performance.
+
+## 🚀 Quick Start
 
 ## Quick Start
 
@@ -108,9 +104,12 @@ Snake_AI/
 ├── human_performance.py    # Human data collection
 ├── compare_performance.py  # Performance comparison
 ├── analyze_results.py      # Script to analyze experiment results
+├── compare_performance.py  # Performance comparison
+├── analyze_results.py      # Script to analyze experiment results
 ├── snake.py                # Core game logic
 ├── game_controller.py      # Human game interface
 ├── ga_controller.py        # AI game interface
+├── continue_training.py    # Fine-tuning script
 ├── continue_training.py    # Fine-tuning script
 └── requirements.txt        # Python dependencies
 ```
