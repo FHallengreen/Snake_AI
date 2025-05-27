@@ -8,7 +8,7 @@ import numpy as np
 import os
 import time
 import matplotlib
-matplotlib.use('Agg')  # Use non-interactive backend to prevent issues
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from scipy import stats
 import pickle
@@ -56,7 +56,6 @@ class PerformanceAnalyzer:
             print(f"Attempting to load human data from: {self.human_data_file}")
             with open(self.human_data_file, 'r') as f:
                 human_data = json.load(f)
-                # Basic validation to ensure it's in the expected format
                 if 'sessions' not in human_data:
                     print(f"Error: The human data file doesn't contain expected 'sessions' key")
                     return None
@@ -82,7 +81,7 @@ class PerformanceAnalyzer:
         print(f"Running {self.ai_eval_games} AI evaluation games...")
         avg_score, scores = run_best_model(
             model_file=self.ai_model_file,
-            num_games=self.ai_eval_games,  # Use the value from config
+            num_games=self.ai_eval_games, 
             max_steps=2000,
             display=False,
             save_stats=True,
@@ -102,7 +101,7 @@ class PerformanceAnalyzer:
             stats = {
                 'scores': scores,
                 'avg_score': avg_score,
-                'steps': [],  # We don't have steps data in this case
+                'steps': [],
                 'avg_steps': 0
             }
         
@@ -189,7 +188,6 @@ class PerformanceAnalyzer:
         
         
         # Comparison result
-        is_significant = p_value_t < 0.05
         better_performer = "AI" if ai_avg > human_avg else "Human"
         
         # Create the final report
@@ -199,7 +197,6 @@ class PerformanceAnalyzer:
             'comparison': {
                 'ai_avg_score': ai_avg,
                 'human_avg_score': human_avg,
-                'is_significant': bool(is_significant),
                 'better_performer': better_performer
             },
             'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')
@@ -210,9 +207,6 @@ class PerformanceAnalyzer:
         print(f"AI Performance: Avg Score = {ai_avg:.2f}, Games = {len(ai_scores)}")
         print(f"Human Performance: Avg Score = {human_avg:.2f}, Games = {len(human_scores)}")
         print(f"Difference: {ai_avg - human_avg:.2f} points")
-        print(f"Statistical Significance (t-test): p = {p_value_t:.6f}")
-        print(f"Statistical Significance (Mann-Whitney U): p = {p_value_u:.6f}")
-        print(f"Result: {better_performer} performs {'significantly ' if is_significant else ''}better")
         
         if self.filter_scores:
             print(f"Note: {len(human_performance['scores'])} human games used after filtering out potentially unfair games")

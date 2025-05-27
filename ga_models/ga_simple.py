@@ -1,18 +1,7 @@
-import random
-from typing import Protocol, Tuple, List, Sequence
 import numpy as np
+from typing import Protocol, Tuple, List, Sequence
 from ga_models.ga_protocol import GAModel
-from ga_models.activation import relu, softmax, leaky_relu
-
-# Try to import Metal Performance Shaders (MPS) support for Apple Silicon
-try:
-    import torch
-    has_mps = hasattr(torch.backends, 'mps') and torch.backends.mps.is_available()
-    if has_mps:
-        print("MPS (Metal Performance Shaders) acceleration available")
-except ImportError:
-    has_mps = False
-
+from ga_models.activation import leaky_relu, softmax
 
 class SimpleModel(GAModel):
     """
@@ -35,13 +24,12 @@ class SimpleModel(GAModel):
 
     def update(self, obs: Sequence) -> Tuple[int, ...]:
         """Forward pass through the neural network"""
-        x = np.array(obs, dtype=np.float32)  # Ensure float32 for better performance
+        x = np.array(obs, dtype=np.float32)
         for i, layer in enumerate(self._DNA):
             layer_np = np.array(layer, dtype=np.float32)
             
-            # Improved activation function selection
+            # Use leaky_relu for hidden layers to prevent dead neurons
             if i > 0:
-                # Use leaky_relu for hidden layers
                 x = leaky_relu(x, alpha=0.1)
             
             x = x @ layer_np

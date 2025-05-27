@@ -19,27 +19,19 @@ class GAController(GameController):
             self.color_food = (255, 0, 0)
         self.action_space = (Vector(0, -1), Vector(0, 1), Vector(1, 0), Vector(-1, 0))
         
-        # Determine the model's input dimension by checking the first layer's shape
+        # Determine input dimension from model DNA
+        self.input_dim = self._detect_input_dimension()
+
+    def _detect_input_dimension(self):
+        """Detect the model's input dimension from its DNA structure"""
         if hasattr(self.model, 'DNA') and self.model.DNA:
             try:
                 dna = self.model.DNA
-                if isinstance(dna, tuple):
-                    # Advanced model with (weights, residual_weights)
-                    if dna[0] and len(dna[0]) > 0:
-                        self.input_dim = dna[0][0].shape[0]
-                    else:
-                        self.input_dim = 21
-                else:
-                    # Simple model with just weights
-                    if dna and len(dna) > 0:
-                        self.input_dim = dna[0].shape[0]
-                    else:
-                        self.input_dim = 21
+                if isinstance(dna, list) and len(dna) > 0:
+                    return dna[0].shape[0]
             except (IndexError, AttributeError):
-                print("Warning: Could not determine model input dimension, using default")
-                self.input_dim = 21
-        else:
-            self.input_dim = 21  # Default to new dimension
+                pass
+        return 21  # Default
 
     def __del__(self):
         if self.display:
